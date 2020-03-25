@@ -11,7 +11,9 @@ nodeGroups:
     desiredCapacity: 1
     ssh: {allow: true}
     preBootstrapCommands:
+      # override kubelet flags to use containerd runtime
       - |
+        mkdir -p /etc/systemd/system/kubelet.service.d
         cat << EOF > /etc/systemd/system/kubelet.service.d/11-containerd.conf
         [Service]
         # Local metadata parameters: REGION, AWS_DEFAULT_REGION
@@ -27,39 +29,45 @@ nodeGroups:
           --max-pods=\${MAX_PODS} \\
           --register-node=true --register-with-taints=\${NODE_TAINTS} \\
           --cloud-provider=aws \\
-          --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock \\
+          --container-runtime=remote \\
+          --container-runtime-endpoint=unix:///run/containerd/containerd.sock \\
+          --runtime-request-timeout=15m \\
           --network-plugin=cni \\
           --cni-bin-dir=/opt/cni/bin \\
           --cni-conf-dir=/etc/cni/net.d \\
           --kubeconfig=/etc/eksctl/kubeconfig.yaml \\
           --config=/etc/eksctl/kubelet.yaml
 
+      # ensure containerd can find kata binaries
       - |
+        mkdir -p /etc/systemd/system/containerd.service.d
+        cat << EOF > /etc/systemd/system/containerd.service.d/11-kata.conf
+        [Service]
+        Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/kata/bin
+        EOF
+
+      - |
+        mkdir -p /etc/containerd
         cat << EOF > /etc/containerd/config.toml
         root = "/var/lib/containerd"
         state = "/run/containerd"
         oom_score = 0
-        
         [grpc]
           address = "/run/containerd/containerd.sock"
           uid = 0
           gid = 0
           max_recv_message_size = 16777216
           max_send_message_size = 16777216
-        
         [debug]
           address = ""
           uid = 0
           gid = 0
           level = ""
-        
         [metrics]
           address = ""
           grpc_histogram = false
-        
         [cgroup]
           path = ""
-        
         [plugins]
           [plugins.cgroups]
             no_prometheus = false
@@ -67,7 +75,7 @@ nodeGroups:
             stream_server_address = "127.0.0.1"
             stream_server_port = "0"
             enable_selinux = false
-            #"sandbox_image = "k8s.gcr.io/pause:3.1"
+            sandbox_image = "k8s.gcr.io/pause:3.1"
             stats_collect_period = 10
             systemd_cgroup = true
             enable_tls_streaming = false
@@ -83,6 +91,10 @@ nodeGroups:
                 runtime_type = ""
                 runtime_engine = ""
                 runtime_root = ""
+              #[plugins.cri.containerd.runtimes.kata]
+              #  runtime_type = "io.containerd.kata.v2"
+              #[plugins.cri.containerd.runtimes.katafc]
+              #  runtime_type = "io.containerd.katafc.v2"
             [plugins.cri.cni]
               bin_dir = "/opt/cni/bin"
               conf_dir = "/etc/cni/net.d"
@@ -113,6 +125,16 @@ nodeGroups:
             schedule_delay = "0s"
             startup_delay = "100ms"
         EOF
+
+      # install kata-fc
+      - |
+        kata_runtime_version="1.10.0"
+        arch="$(uname -m)"
+        curl --silent --location "https://github.com/kata-containers/runtime/releases/download/${kata_runtime_version}/kata-static-${kata_runtime_version}-${arch}.tar.xz" --output "/tmp/kata.txz"
+        tar xJf "/tmp/kata.txz" -C /
+        modprobe vhost_vsock
+        mkdir -p /etc/kata-containers
+        ln -s /opt/kata/share/defaults/kata-containers/configuration-qemu.toml /etc/kata-containers/configuration.toml
 
 
     kubeletExtraConfig:
