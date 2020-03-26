@@ -93,11 +93,30 @@ nodeGroups:
                 runtime_type = ""
                 runtime_engine = ""
                 runtime_root = ""
-              #[plugins.cri.containerd.runtimes.kata-qemu]
-              #  runtime_type = "io.containerd.kata.v2"
-              #  config_path = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml"
-              #[plugins.cri.containerd.runtimes.katafc]
-              #  runtime_type = "io.containerd.katafc.v2"
+              [plugins.cri.containerd.runtimes.kata-qemu]
+                runtime_type = "io.containerd.kata.v2"
+                # with /etc/kata-containers/configuration.toml removed, I tried this:
+                #config_path = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml"
+                # and this:
+                #ConfigPath = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml"
+                # and this:
+                #[plugins.cri.containerd.runtimes.kata-qemu.options]
+                #  config_path = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml"
+                # and this:
+                #[plugins.cri.containerd.runtimes.kata-qemu.options]
+                #  ConfigPath = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml"
+              [plugins.cri.containerd.runtimes.katafc]
+                runtime_type = "io.containerd.katafc.v2"
+                # with /etc/kata-containers/configuration.toml removed, I tried this:
+                #config_path = "/opt/kata/share/defaults/kata-containers/configuration-fc.toml"
+                # and this:
+                #ConfigPath = "/opt/kata/share/defaults/kata-containers/configuration-fc.toml"
+                # and this:
+                #[plugins.cri.containerd.runtimes.kata-fc.options]
+                #  config_path = "/opt/kata/share/defaults/kata-containers/configuration-fc.toml"
+                # and this:
+                #[plugins.cri.containerd.runtimes.kata-fc.options]
+                #  ConfigPath = "/opt/kata/share/defaults/kata-containers/configuration-fc.toml"
             [plugins.cri.cni]
               bin_dir = "/opt/cni/bin"
               conf_dir = "/etc/cni/net.d"
@@ -138,7 +157,7 @@ nodeGroups:
         modprobe vhost_vsock
         mkdir -p /etc/kata-containers
         ln -s /opt/kata/share/defaults/kata-containers/configuration-qemu.toml /etc/kata-containers/configuration.toml
-
+        ln -s /opt/kata/bin/containerd-shim-kata-v2 /opt/kata/bin/containerd-shim-katafc-v2
 
     kubeletExtraConfig:
         cgroupDriver: systemd
