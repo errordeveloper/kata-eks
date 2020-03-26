@@ -144,11 +144,13 @@ nodeGroups:
         #!/bin/bash
         KATA_CONF_FILE=/opt/kata/share/defaults/kata-containers/configuration-qemu.toml /opt/kata/bin/containerd-shim-kata-v2 \$@
         EOF
+        chmod +x /opt/kata/bin/containerd-shim-kata-qemu-v2
 
         cat << EOF > /opt/kata/bin/containerd-shim-kata-fc-v2
         #!/bin/bash
         KATA_CONF_FILE=/opt/kata/share/defaults/kata-containers/configuration-fc.toml /opt/kata/bin/containerd-shim-kata-v2 $@
         EOF
+        chmod +x /opt/kata/bin/containerd-shim-kata-fc-v2
 
     kubeletExtraConfig:
         cgroupDriver: systemd
