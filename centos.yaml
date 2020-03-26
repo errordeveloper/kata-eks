@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: centos
+  labels:
+    app: centos
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: centos
+  template:
+    metadata:
+      labels:
+        app: centos
+    spec:
+      runtimeClassName: kata-qemu
+      containers:
+      - name: console
+        image: quay.io/footloose/centos7
+        command: [/sbin/init]
+        tty: true
+        securityContext:
+          privileged: true
