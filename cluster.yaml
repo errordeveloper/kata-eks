@@ -4,6 +4,7 @@ kind: ClusterConfig
 metadata:
   region: eu-west-1
   name: test-kata-fc-2
+  version: 1.15
 
 nodeGroups:
   - name: ng-6
