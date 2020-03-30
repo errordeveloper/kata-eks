@@ -135,7 +135,7 @@ nodeGroups:
 
       # install kata-fc
       - |
-        kata_runtime_version="1.10.2"
+        kata_runtime_version="1.10.1" # 1.10.2 is latest, but binaries are missing
         arch="$(uname -m)"
         curl --silent --location "https://github.com/kata-containers/runtime/releases/download/${kata_runtime_version}/kata-static-${kata_runtime_version}-${arch}.tar.xz" --output "/tmp/kata.txz"
         tar xJf "/tmp/kata.txz" -C /
