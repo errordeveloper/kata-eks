@@ -4,42 +4,6 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-get_tarball() {
-  url="$1"
-  dir="$2"
-
-  tmp="$(mktemp)"
-
-  mkdir -p "${dir}"
-
-  curl --location --silent --output "${tmp}" "${url}"
-  tar -C "${dir}" -xf "${tmp}" 
-
-  rm -f "${tmp}"
-}
-
-get_file() {
-  url="$1"
-  output="$2"
-
-  mkdir -p "$(dirname "${output}")"
-
-  curl --location --silent --output "${output}" "${url}"
-}
-
-get_binary() {
-  url="$1"
-  output="/usr/bin/${2}"
-
-  get_file "${url}" "${output}"
-
-  chmod +x "${output}"
-}
-
-rm -rf /out/var/cache/ /out/var/lib /out/var/log /out/var/tmp
-
-ln -sf /tmp /out/var/tmp
-
 mkdir -p /out/etc/chrony
 cat > /out/etc/chrony/chrony.conf << EOF
 # Welcome to the chrony configuration file. See chrony.conf(5) for more
@@ -105,47 +69,3 @@ ConditionPathExists=/dev/ptp0
 EOF
 
 echo > /out/etc/resolv.conf
-
-#cat > /etc/sysctl.d/99-kubernetes-cri.conf << EOF
-#net.bridge.bridge-nf-call-ip6tables = 1
-#net.bridge.bridge-nf-call-iptables = 1
-#net.ipv4.ip_forward = 1
-#EOF
-#
-#cat > /etc/modules-load.d/99-containerd.conf << EOF
-#overlay
-#br_netfilter
-#EOF
-#
-#ARCH="$(uname -m)"
-#ALT_ARCH="${ARCH}"
-#if [ "${ARCH}" = "x86_64" ] ; then
-#  ALT_ARCH="amd64"
-#fi
-#
-#cat > /etc/systemd/system/containerd.service << EOF
-#[Unit]
-#Description=containerd container runtime
-#Documentation=https://containerd.io
-#After=network.target local-fs.target
-#
-#[Install]
-#WantedBy=multi-user.target
-#
-#[Service]
-##ExecStartPre=-/sbin/modprobe overlay
-#ExecStart=/usr/bin/containerd
-#Delegate=yes
-#KillMode=process
-#Restart=always
-## Having non-zero Limit*s causes performance problems due to accounting overhead
-## in the kernel. We recommend using cgroups to do container-local accounting.
-#LimitNPROC=infinity
-#LimitCORE=infinity
-#LimitNOFILE=1048576
-## Comment TasksMax if your systemd version does not supports it.
-## Only systemd 226 and above support this version.
-#TasksMax=infinity
-#EOF
-#
-#systemctl enable containerd
