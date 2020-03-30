@@ -1,8 +1,7 @@
-# based on https://github.com/weaveworks/footloose/blob/e0a534425d93b0dc45e308b319b14622f60f39da/images/ubuntu18.04/Dockerfile
-#
-FROM ubuntu:18.04
+FROM linuxkit/kernel:4.19.104 as kernel
 
-ENV container docker
+# based on https://github.com/weaveworks/footloose/blob/e0a534425d93b0dc45e308b319b14622f60f39da/images/ubuntu18.04/Dockerfile
+FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a051853a341d
 
 # Don't start any optional services except for the few we need.
 RUN find /etc/systemd/system \
@@ -42,5 +41,9 @@ RUN sed -i -e 's/^AcceptEnv LANG LC_\*$/#AcceptEnv LANG LC_*/' /etc/ssh/sshd_con
 # https://www.freedesktop.org/wiki/Software/systemd/ContainerInterface/
 STOPSIGNAL SIGRTMIN+3
 
+RUN mkdir -p /boot
+COPY --from=kernel System.map /boot/System.map
+COPY --from=kernel kernel.tar /tmp/modules.tar
+RUN tar -C / -xf /tmp/modules.tar && rm -f /tmp/modules.tar
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
