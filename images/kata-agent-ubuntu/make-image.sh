@@ -9,6 +9,8 @@ set -e
 [ -n "${DEBUG}" ] && set -x
 
 DOCKER_RUNTIME=${DOCKER_RUNTIME:-runc}
+TMPDIR="${TMPDIR:-/tmp}"
+mkdir -p "${TMPDIR}"
 
 readonly script_name="${0##*/}"
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -128,11 +130,6 @@ Extra environment variables:
 	AGENT_INIT: Use kata agent as init process
 	NSDAX_BIN:  Use to specify path to pre-compiled 'nsdax' tool.
 	FS_TYPE:    Filesystem type to use. Only xfs and ext4 are supported.
-	USE_DOCKER: If set will build image in a Docker Container (requries docker)
-		    DEFAULT: not set
-	USE_PODMAN: If set and USE_DOCKER not set, will build image in a Podman Container (requries podman)
-	            DEFAULT: not set
-
 
 Following diagram shows how the resulting image will look like
 
@@ -221,8 +218,8 @@ calculate_required_disk_size() {
 	local block_size="$3"
 
 	readonly rootfs_size_mb=$(du -B 1MB -s "${rootfs}" | awk '{print $1}')
-	readonly image="$(mktemp)"
-	readonly mount_dir="$(mktemp -d)"
+	readonly image="$(mktemp -p "${TMPDIR}")"
+	readonly mount_dir="$(mktemp -p "${TMPDIR}" -d)"
 	readonly max_tries=20
 	readonly increment=10
 
@@ -285,8 +282,10 @@ setup_loop_device() {
 
 	# Get the loop device bound to the image file (requires /dev mounted in the
 	# image build system and root privileges)
-	device=$(losetup -P -f --show "${image}")
+        device="$(losetup -P -f --show "${image}")"
 
+        #mknod "${device}" b 7 0
+        #mknod "${device}p1" b 259 0
 	#Refresh partition table
 	partprobe -s "${device}" > /dev/null
 	# Poll for the block device p1
@@ -363,7 +362,7 @@ create_rootfs_image() {
 	fi
 
 	info "Mounting root partition"
-	readonly mount_dir=$(mktemp -p ${TMPDIR:-/tmp} -d osbuilder-mount-dir.XXXX)
+	readonly mount_dir=$(mktemp -p "${TMPDIR}" -d osbuilder-mount-dir.XXXX)
 	mount "${device}p1" "${mount_dir}"
 	OK "root partition mounted"
 
@@ -467,13 +466,6 @@ main() {
 	if [ -z "${rootfs}" ]; then
 		usage
 		exit 0
-	fi
-
-	local container_engine
-	if [ -n "${USE_DOCKER}" ]; then
-		container_engine="docker"
-	elif [ -n "${USE_PODMAN}" ]; then
-		container_engine="podman"
 	fi
 
 	if ! check_rootfs "${rootfs}" ; then
