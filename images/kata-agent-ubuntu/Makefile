@@ -1,5 +1,9 @@
+KATA_AGENT_VERSION = 1.11.0-alpha1
+
+IMAGE := errordeveloper/kata-agent:$(KATA_AGENT_VERSION)-ubuntu-18.04
+
 image:
-	docker build -t errordeveloper/kata-agent:1.10.1-ubuntu-18.04 .
+	docker build --build-arg KATA_AGENT_VERSION=$(KATA_AGENT_VERSION) --tag $(IMAGE) .
 
 push: image
-	docker push errordeveloper/kata-agent:1.10.1-ubuntu-18.04
+	docker push $(IMAGE)

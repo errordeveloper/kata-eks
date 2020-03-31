@@ -56,8 +56,8 @@ COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 
 FROM golang:1.14.1@sha256:08d16c1e689e86df1dae66d8ef4cec49a9d822299ec45e68a810c46cb705628d as agent-builder
-env KATA_AGENT_IMPORT_PATH=github.com/kata-containers/agent
-env KATA_AGENT_VERSION=1.10.1
+ENV KATA_AGENT_IMPORT_PATH=github.com/kata-containers/agent
+ARG KATA_AGENT_VERSION
 RUN go get -d "${KATA_AGENT_IMPORT_PATH}" \
    && cd "${GOPATH}/src/${KATA_AGENT_IMPORT_PATH}" \
    && git checkout -q "${KATA_AGENT_VERSION}" \
