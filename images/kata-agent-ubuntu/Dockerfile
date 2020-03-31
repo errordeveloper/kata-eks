@@ -1,4 +1,3 @@
-FROM linuxkit/kernel:4.19.104 as kernel
 
 # based on https://github.com/weaveworks/footloose/blob/e0a534425d93b0dc45e308b319b14622f60f39da/images/ubuntu18.04/Dockerfile
 FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a051853a341d as rootfs-builder
@@ -47,11 +46,6 @@ RUN systemctl disable \
 # https://www.freedesktop.org/wiki/Software/systemd/ContainerInterface/
 STOPSIGNAL SIGRTMIN+3
 
-RUN mkdir -p /boot
-COPY --from=kernel kernel /boot/bzImage
-COPY --from=kernel System.map /boot/System.map
-COPY --from=kernel kernel.tar /tmp/modules.tar
-RUN tar -C / -xf /tmp/modules.tar && rm -f /tmp/modules.tar
 
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
@@ -78,5 +72,18 @@ RUN apt-get update \
     && true
 
 COPY --from=rootfs / /in
-RUN cp -a /in/lib/modules /lib/modules # workaround
-RUN SUPERMIN_KERNEL=/in/boot/bzImage SUPERMIN_MODULES=/in/lib/modules/4.19.104-linuxkit virt-make-fs --format=qcow2 --type=ext4 /in /out/image.qcow2
+
+COPY --from=linuxkit/kernel:4.19.104 /kernel /out/kernel-4.19.104-linuxkit
+COPY --from=linuxkit/kernel:4.19.104 /kernel.tar /tmp/modules.tar
+RUN tar -C /out -xf /tmp/modules.tar && rm -f /tmp/modules.tar
+
+COPY make-image.sh /tmp/make-image.sh
+
+RUN /tmp/make-image.sh /in || true
+
+## RUN cp -a /in/lib/modules /lib/modules # workaround for virt-make-fs/supermin to not fail
+## RUN SUPERMIN_KERNEL=/out/kernel-4.19.104-linuxkit SUPERMIN_MODULES=/in/lib/modules/4.19.104-linuxkit virt-make-fs --partition=gpt --format=qcow2 --type=ext4 /in /out/image.qcow2
+#
+#
+#FROM scratch
+#COPY --from=image-builder /out /
