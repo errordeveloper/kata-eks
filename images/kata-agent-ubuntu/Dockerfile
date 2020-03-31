@@ -48,6 +48,7 @@ RUN systemctl disable \
 STOPSIGNAL SIGRTMIN+3
 
 RUN mkdir -p /boot
+COPY --from=kernel kernel /boot/bzImage
 COPY --from=kernel System.map /boot/System.map
 COPY --from=kernel kernel.tar /tmp/modules.tar
 RUN tar -C / -xf /tmp/modules.tar && rm -f /tmp/modules.tar
@@ -64,6 +65,18 @@ RUN go get -d "${KATA_AGENT_IMPORT_PATH}" \
    && make INIT=no SECCOMP=no \
    && make install DESTDIR=/out
 
-FROM scratch
+FROM scratch as rootfs
 COPY --from=rootfs-builder / /
 COPY --from=agent-builder /out /
+
+FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a051853a341d as image-builder
+RUN mkdir /out
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+      libguestfs-tools \
+    && true
+
+COPY --from=rootfs / /in
+RUN cp -a /in/lib/modules /lib/modules # workaround
+RUN SUPERMIN_KERNEL=/in/boot/bzImage SUPERMIN_MODULES=/in/lib/modules/4.19.104-linuxkit virt-make-fs --format=qcow2 --type=ext4 /in /out/image.qcow2
