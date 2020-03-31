@@ -12,7 +12,8 @@ RUN find /etc/systemd/system /lib/systemd/system \
       -exec rm \{} \;
 
 RUN apt-get update \
-    && apt-get install -y \
+    && apt-get upgrade --yes \
+    && apt-get install --yes --no-install-recommends \
       chrony \
       dbus \
       init \
@@ -23,6 +24,10 @@ RUN apt-get update \
       net-tools \
       sudo \
       systemd \
+    && SUDO_FORCE_REMOVE=yes apt-get remove --yes \
+      dmsetup \
+      sudo \
+    && apt-get autoremove --yes \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
