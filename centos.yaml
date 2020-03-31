@@ -14,8 +14,9 @@ spec:
     metadata:
       labels:
         app: centos
-      #annotations:
-      #  io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu.toml
+      annotations:
+        #io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu.toml
+        io.katacontainers.config.hypervisor.kernel: /opt/kernels/linux-5.4.19/bzImage
     spec:
       runtimeClassName: kata-qemu
       containers:
