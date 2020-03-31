@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: centos
+      #annotations:
+      #  io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu.toml
     spec:
       runtimeClassName: kata-qemu
       containers:

@@ -39,16 +39,8 @@ nodeGroups:
           --kubeconfig=/etc/eksctl/kubeconfig.yaml \\
           --config=/etc/eksctl/kubelet.yaml
 
-      # ensure containerd can find kata binaries
-      - |
-        mkdir -p /etc/systemd/system/containerd.service.d
-        cat << EOF > /etc/systemd/system/containerd.service.d/11-kata.conf
-        [Service]
-        Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/kata/bin
-        EOF
-        systemctl daemon-reload
-        systemctl restart containerd
 
+      # write containerd configuration
       - |
         mkdir -p /etc/containerd
         cat << EOF > /etc/containerd/config.toml
@@ -96,12 +88,14 @@ nodeGroups:
                 runtime_root = ""
               [plugins.cri.containerd.runtimes.kata-qemu]
                 runtime_type = "io.containerd.kata-qemu.v2"
+                pod_annotations = ["io.katacontainers.*"]
                 [plugins.cri.containerd.runtimes.kata-qemu.options]
-                  config_path = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml"
+                  ConfigPath = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml"
               [plugins.cri.containerd.runtimes.kata-fc]
                 runtime_type = "io.containerd.kata-fc.v2"
+                pod_annotations = ["io.katacontainers.*"]
                 [plugins.cri.containerd.runtimes.kata-fc.options]
-                  config_path = "/opt/kata/share/defaults/kata-containers/configuration-fc.toml"
+                  ConfigPath = "/opt/kata/share/defaults/kata-containers/configuration-fc.toml"
             [plugins.cri.cni]
               bin_dir = "/opt/cni/bin"
               conf_dir = "/etc/cni/net.d"
@@ -133,25 +127,35 @@ nodeGroups:
             startup_delay = "100ms"
         EOF
 
-      # install kata-fc
+      # install newer version of containerd - EKS AMI comes with docker and containerd version 1.2.6,
+      # however that version doesn't pass `pod_annotations` to kata, so we need latest - 1.3.3
       - |
-        kata_runtime_version="1.10.1" # 1.10.2 is latest, but binaries are missing
+        containerd_version="1.3.3"
+        arch="amd64"
+        curl --silent --location "https://github.com/containerd/containerd/releases/download/v${containerd_version}/containerd-${containerd_version}.linux-${arch}.tar.gz" --output "/tmp/containerd.tgz"
+        tar -C /usr -xf "/tmp/containerd.tgz"
+
+      # ensure containerd can find kata binaries
+      - |
+        mkdir -p /etc/systemd/system/containerd.service.d
+        cat << EOF > /etc/systemd/system/containerd.service.d/11-kata.conf
+        [Service]
+        Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/kata/bin
+        EOF
+        systemctl daemon-reload
+        systemctl restart containerd
+
+      # install kata runtime
+      - |
+        kata_runtime_version="1.11.0-alpha1" # see https://github.com/kata-containers/runtime/issues/2564
         arch="$(uname -m)"
-        curl --silent --location "https://github.com/kata-containers/runtime/releases/download/${kata_runtime_version}/kata-static-${kata_runtime_version}-${arch}.tar.xz" --output "/tmp/kata.txz"
-        tar xJf "/tmp/kata.txz" -C /
+        curl --silent --location "https://github.com/kata-containers/runtime/releases/download/${kata_runtime_version}/kata-static-${kata_runtime_version}-${arch}.tar.xz" --output "/tmp/kata-runtime.txz"
+        tar -C / -xf "/tmp/kata-runtime.txz"
+        rm -f "/tmp/kata-runtime.txz"
         modprobe vhost_vsock
 
-        cat << EOF > /opt/kata/bin/containerd-shim-kata-qemu-v2
-        #!/bin/bash
-        KATA_CONF_FILE=/opt/kata/share/defaults/kata-containers/configuration-qemu.toml /opt/kata/bin/containerd-shim-kata-v2 \$@
-        EOF
-        chmod +x /opt/kata/bin/containerd-shim-kata-qemu-v2
-
-        cat << EOF > /opt/kata/bin/containerd-shim-kata-fc-v2
-        #!/bin/bash
-        KATA_CONF_FILE=/opt/kata/share/defaults/kata-containers/configuration-fc.toml /opt/kata/bin/containerd-shim-kata-v2 $@
-        EOF
-        chmod +x /opt/kata/bin/containerd-shim-kata-fc-v2
+        ln -s /opt/kata/bin/containerd-shim-kata-v2 /opt/kata/bin/containerd-shim-kata-qemu-v2
+        ln -s /opt/kata/bin/containerd-shim-kata-v2 /opt/kata/bin/containerd-shim-kata-fc-v2
 
     kubeletExtraConfig:
         cgroupDriver: systemd
