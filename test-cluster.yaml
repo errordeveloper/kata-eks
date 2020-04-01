@@ -22,7 +22,7 @@ items:
         - name: console
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
           imagePullPolicy: Always
-          command: [/sbin/init]
+          command: [/lib/systemd/systemd]
           tty: true
           securityContext:
             privileged: true
@@ -47,7 +47,7 @@ items:
         - name: console
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
           imagePullPolicy: Always
-          command: [/sbin/init]
+          command: [/lib/systemd/systemd]
           tty: true
           securityContext:
             privileged: true
