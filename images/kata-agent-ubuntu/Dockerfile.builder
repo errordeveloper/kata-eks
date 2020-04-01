@@ -79,10 +79,11 @@ COPY --from=rootfs / /in
 
 COPY --from=linuxkit/kernel:4.19.104 /kernel /out/kernel-4.19.104-linuxkit
 COPY --from=linuxkit/kernel:4.19.104 /kernel.tar /tmp/modules.tar
-RUN tar -C /out -xf /tmp/modules.tar && rm -f /tmp/modules.tar
+RUN tar -C /in -xf /tmp/modules.tar && rm -f /tmp/modules.tar
 
 COPY make-image.sh /tmp/make-image.sh
 COPY nsdax.gpl.c /tmp/nsdax.gpl.c
 
 WORKDIR /tmp
+RUN ln -sf /usr/lib/systemd/system/kata-containers.target /in/etc/systemd/system/basic.target.wants/kata-containers.target
 CMD /tmp/make-image.sh -o /out/kata.img /in
