@@ -57,7 +57,9 @@ RUN go get -d "${KATA_AGENT_IMPORT_PATH}" \
    && cd "${GOPATH}/src/${KATA_AGENT_IMPORT_PATH}" \
    && git checkout -q "${KATA_AGENT_VERSION}" \
    && make INIT=no SECCOMP=no \
-   && make install DESTDIR=/out
+   && make install DESTDIR=/out \
+   && mkdir -p /out/etc/systemd/system/basic.target.wants \
+   && ln -sf /usr/lib/systemd/system/kata-containers.target /out/etc/systemd/system/basic.target.wants/kata-containers.target
 
 FROM scratch as rootfs
 COPY --from=rootfs-builder / /
@@ -85,5 +87,4 @@ COPY make-image.sh /tmp/make-image.sh
 COPY nsdax.gpl.c /tmp/nsdax.gpl.c
 
 WORKDIR /tmp
-RUN ln -sf /usr/lib/systemd/system/kata-containers.target /in/etc/systemd/system/basic.target.wants/kata-containers.target
 CMD /tmp/make-image.sh -o /out/kata.img /in
