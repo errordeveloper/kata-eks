@@ -4,6 +4,20 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+cat > /etc/sysctl.d/99-kubernetes-cri.conf << EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+cat > /etc/modules-load.d/99-containerd.conf << EOF
+overlay
+br_netfilter
+vsock
+vmw_vsock_virtio_transport
+vmw_vsock_virtio_transport_common
+EOF
+
 mkdir -p /out/etc/chrony
 cat > /out/etc/chrony/chrony.conf << EOF
 # Welcome to the chrony configuration file. See chrony.conf(5) for more
@@ -69,3 +83,5 @@ ConditionPathExists=/dev/ptp0
 EOF
 
 echo > /out/etc/resolv.conf
+
+cp /usr/share/systemd/tmp.mount /etc/systemd/system/
