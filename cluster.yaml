@@ -39,7 +39,6 @@ nodeGroups:
           --kubeconfig=/etc/eksctl/kubeconfig.yaml \\
           --config=/etc/eksctl/kubelet.yaml
 
-
       # write containerd configuration
       - |
         mkdir -p /etc/containerd
@@ -135,6 +134,27 @@ nodeGroups:
         curl --silent --location "https://github.com/containerd/containerd/releases/download/v${containerd_version}/containerd-${containerd_version}.linux-${arch}.tar.gz" --output "/tmp/containerd.tgz"
         tar -C /usr -xf "/tmp/containerd.tgz"
 
+      # ensure containerd can find kata binaries
+      - |
+        mkdir -p /etc/systemd/system/containerd.service.d
+        cat << EOF > /etc/systemd/system/containerd.service.d/11-kata.conf
+        [Service]
+        Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/kata/bin
+        EOF
+        systemctl daemon-reload
+        systemctl restart containerd
+
+      # install kata runtime
+      - |
+        kata_runtime_version="1.11.0-alpha1" # see https://github.com/kata-containers/runtime/issues/2564
+        arch="$(uname -m)"
+        curl --silent --location "https://github.com/kata-containers/runtime/releases/download/${kata_runtime_version}/kata-static-${kata_runtime_version}-${arch}.tar.xz" --output "/tmp/kata-runtime.txz"
+        tar -C / -xf "/tmp/kata-runtime.txz"
+        rm -f "/tmp/kata-runtime.txz"
+        modprobe vhost_vsock
+
+        ln -s /opt/kata/bin/containerd-shim-kata-v2 /opt/kata/bin/containerd-shim-kata-qemu-v2
+        ln -s /opt/kata/bin/containerd-shim-kata-v2 /opt/kata/bin/containerd-shim-kata-fc-v2
 
         cat << EOF > /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml 
         # Copyright (c) 2017-2019 Intel Corporation
@@ -597,29 +617,6 @@ nodeGroups:
         # (default: [])
         experimental=[]
         EOF
-
-
-      # ensure containerd can find kata binaries
-      - |
-        mkdir -p /etc/systemd/system/containerd.service.d
-        cat << EOF > /etc/systemd/system/containerd.service.d/11-kata.conf
-        [Service]
-        Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/kata/bin
-        EOF
-        systemctl daemon-reload
-        systemctl restart containerd
-
-      # install kata runtime
-      - |
-        kata_runtime_version="1.11.0-alpha1" # see https://github.com/kata-containers/runtime/issues/2564
-        arch="$(uname -m)"
-        curl --silent --location "https://github.com/kata-containers/runtime/releases/download/${kata_runtime_version}/kata-static-${kata_runtime_version}-${arch}.tar.xz" --output "/tmp/kata-runtime.txz"
-        tar -C / -xf "/tmp/kata-runtime.txz"
-        rm -f "/tmp/kata-runtime.txz"
-        modprobe vhost_vsock
-
-        ln -s /opt/kata/bin/containerd-shim-kata-v2 /opt/kata/bin/containerd-shim-kata-qemu-v2
-        ln -s /opt/kata/bin/containerd-shim-kata-v2 /opt/kata/bin/containerd-shim-kata-fc-v2
 
     kubeletExtraConfig:
         cgroupDriver: systemd
