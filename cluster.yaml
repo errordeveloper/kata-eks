@@ -165,7 +165,7 @@ nodeGroups:
         # may stop the virtual machine from booting.
         # To see the list of default parameters, enable hypervisor debug, create a
         # container and look for 'default-kernel-parameters' log entries.
-        kernel_params = ""
+        kernel_params = "agent.ingnore_scsi_bus_scan_errors=true" # also: agent.ingnore_all_device_errors
         
         # Path to the firmware.
         # If you want that qemu uses the default firmware leave this option empty
