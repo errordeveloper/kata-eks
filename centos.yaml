@@ -6,7 +6,7 @@ metadata:
   labels:
     app: centos
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: centos
@@ -15,7 +15,7 @@ spec:
       labels:
         app: centos
       annotations:
-        #io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu.toml
+        io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
         #io.katacontainers.config.hypervisor.kernel: /var/lib/images/vmlinuz-4.15.0-1056-kvm
         #io.katacontainers.config.hypervisor.kernel: /var/lib/images/vmlinuz-3.10.0-1062.18.1.el7.x86_64
         io.katacontainers.config.hypervisor.kernel: /var/lib/images/vmlinuz-4.18.0-147.5.1.el8_1.x86_64
