@@ -8,10 +8,13 @@ IMAGE := errordeveloper/kata-agent:$(KATA_AGENT_VERSION)-ubuntu-18.04
 # in the future, but this works for now. Also, make-image.sh is kind of clunky
 # anyway... it's got to be possible to create images for Linux on any OS!
 image:
-	docker build --file Dockerfile.builder --build-arg KATA_AGENT_VERSION=$(KATA_AGENT_VERSION) --tag $(IMAGE)-local .
-	container=$$(docker create --interactive --tty --volume /dev:/dev --privileged $(IMAGE)-local) \
+	docker build --file Dockerfile.builder --build-arg KATA_AGENT_VERSION=$(KATA_AGENT_VERSION) --tag $(IMAGE)-builder .
+	container=$$(docker create --interactive --tty --volume /dev:/dev --privileged $(IMAGE)-builder) \
 	  && docker start --attach --interactive $${container} \
-	  && cat Dockerfile | docker build --build-arg IMAGE_BUILDER="$$(docker commit $${container})" --tag $(IMAGE) -
+	  && image_builder="$$(docker commit $${container})" \
+	  && cat Dockerfile | docker build --build-arg IMAGE_BUILDER="$${image_builder}" --tag $(IMAGE) - \
+	  && cat Dockerfile.rootfs | docker build --build-arg IMAGE_BUILDER="$${image_builder}" --tag $(IMAGE)-rootfs -
 
 push: image
 	docker push $(IMAGE)
+	docker push $(IMAGE)-rootfs

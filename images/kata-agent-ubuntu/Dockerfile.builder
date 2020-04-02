@@ -119,7 +119,6 @@ COPY --from=centos-7-kernels /boot /out
 COPY --from=centos-8-kernels /lib/modules /in/lib/modules
 RUN mv /in/lib/modules/4.18.0-147.5.1.el8_1.x86_64/vmlinuz /out/vmlinuz-4.18.0-147.5.1.el8_1.x86_64
 
-
 COPY --from=linuxkit/kernel:4.19.104 /kernel /out/vmlinuz-4.19.104-linuxkit
 COPY --from=linuxkit/kernel:4.19.104 /kernel.tar /tmp/modules.tar
 RUN tar -C /in -xf /tmp/modules.tar && rm -f /tmp/modules.tar

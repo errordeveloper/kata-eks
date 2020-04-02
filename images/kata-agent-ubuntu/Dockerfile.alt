@@ -1,3 +1,0 @@
-FROM scratch
-COPY --from=errordeveloper/kata-agent:1.11.0-alpha1-ubuntu-18.04-local /in /
-CMD /sbin/init

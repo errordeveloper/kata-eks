@@ -1,5 +1,3 @@
-FROM linuxkit/kernel:4.19.104 as kernel
-
 # based on https://github.com/weaveworks/footloose/blob/e0a534425d93b0dc45e308b319b14622f60f39da/images/ubuntu18.04/Dockerfile
 FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a051853a341d
 
@@ -45,9 +43,10 @@ RUN systemctl disable \
 STOPSIGNAL SIGRTMIN+3
 
 RUN mkdir -p /boot
-COPY --from=kernel System.map /boot/System.map
-COPY --from=kernel kernel.tar /tmp/modules.tar
-RUN tar -C / -xf /tmp/modules.tar && rm -f /tmp/modules.tar
+
+COPY --from=errordeveloper/kata-agent:816ee8f1f-ubuntu-18.04-rootfs /lib/modules /lib/modules
 
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
+
+CMD /lib/systemd/systemd

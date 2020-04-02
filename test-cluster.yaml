@@ -14,6 +14,10 @@ items:
         role: master
     template:
       metadata:
+        annotations:
+          io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
+          io.katacontainers.config.hypervisor.kernel: /var/lib/images/vmlinuz-5.4.19-linuxkit
+          io.katacontainers.config.hypervisor.image: /var/lib/images/kata.img
         labels:
           role: master
       spec:
@@ -39,6 +43,10 @@ items:
         role: node
     template:
       metadata:
+        annotations:
+          io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
+          io.katacontainers.config.hypervisor.kernel: /var/lib/images/vmlinuz-5.4.19-linuxkit
+          io.katacontainers.config.hypervisor.image: /var/lib/images/kata.img
         labels:
           role: node
       spec:
