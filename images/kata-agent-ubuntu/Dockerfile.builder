@@ -55,6 +55,8 @@ ENV KATA_AGENT_IMPORT_PATH=github.com/kata-containers/agent
 ARG KATA_AGENT_VERSION
 RUN go get -d "${KATA_AGENT_IMPORT_PATH}" \
    && cd "${GOPATH}/src/${KATA_AGENT_IMPORT_PATH}" \
+   && git remote add fork https://github.com/errordeveloper/kata-agent \
+   && git fetch fork \
    && git checkout -q "${KATA_AGENT_VERSION}" \
    && make INIT=no SECCOMP=no \
    && make install DESTDIR=/out \
@@ -85,9 +87,14 @@ RUN yum install -y \
 
 # see https://centos.pkgs.org/8/centos-baseos-x86_64/ for all available versions
 FROM centos:8@sha256:fe8d824220415eed5477b63addf40fb06c3b049404242b31982106ac204f6700 as centos-8-kernels
-RUN yum install -y \
+RUN dnf install -y \
     kernel-4.18.0-147.5.1.el8_1.x86_64 \
   && true
+
+#FROM fedora:32@sha256:f0a228cac4545c031ed11da1fe5c2fd214c2c3b0b5f090c8000d9358930c7eac as fedora-32-kernels
+#  RUN dnf install -y \
+#      kernel-5.6.0-0.rc7.git0.2.fc32.x86_6 \ # go find it!
+#    && true
 
 FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a051853a341d as image-builder
 RUN mkdir /out
@@ -113,8 +120,12 @@ COPY --from=centos-8-kernels /lib/modules /in/lib/modules
 RUN mv /in/lib/modules/4.18.0-147.5.1.el8_1.x86_64/vmlinuz /out/vmlinuz-4.18.0-147.5.1.el8_1.x86_64
 
 
-COPY --from=linuxkit/kernel:4.19.104 /kernel /out/kernel-4.19.104-linuxkit
+COPY --from=linuxkit/kernel:4.19.104 /kernel /out/vmlinuz-4.19.104-linuxkit
 COPY --from=linuxkit/kernel:4.19.104 /kernel.tar /tmp/modules.tar
+RUN tar -C /in -xf /tmp/modules.tar && rm -f /tmp/modules.tar
+
+COPY --from=linuxkit/kernel:5.4.19 /kernel /out/vmlinuz-5.4.19-linuxkit
+COPY --from=linuxkit/kernel:5.4.19 /kernel.tar /tmp/modules.tar
 RUN tar -C /in -xf /tmp/modules.tar && rm -f /tmp/modules.tar
 
 COPY make-image.sh /tmp/make-image.sh

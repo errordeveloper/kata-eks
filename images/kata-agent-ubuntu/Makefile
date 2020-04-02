@@ -1,4 +1,4 @@
-KATA_AGENT_VERSION = 816ee8f1f16be83702a308c5437c8d97d6bca2eb # see https://github.com/kata-containers/agent/pull/768
+KATA_AGENT_VERSION = 816ee8f1f# see https://github.com/kata-containers/agent/pull/768
 
 IMAGE := errordeveloper/kata-agent:$(KATA_AGENT_VERSION)-ubuntu-18.04
 
