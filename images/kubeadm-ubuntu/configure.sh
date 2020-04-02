@@ -63,6 +63,9 @@ get_tarball "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CR
 CONTAINERD_VERSION="1.3.3"
 get_tarball "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}.linux-${ALT_ARCH}.tar.gz" /usr
 
+RUNC_VERSION="v1.0.0-rc10"
+get_binary "https://github.com/opencontainers/runc/releases/download/${RUNC_VERSION}/runc.${ALT_ARCH}" runc
+
 KUBERNETES_VERSION="v1.18.0"
 
 for b in kubeadm kubectl kubelet ; do
@@ -94,6 +97,7 @@ LimitNOFILE=1048576
 # Comment TasksMax if your systemd version does not supports it.
 # Only systemd 226 and above support this version.
 TasksMax=infinity
+OOMScoreAdjust=-999
 EOF
 
 systemctl enable containerd
@@ -171,4 +175,3 @@ resolvConf: /run/systemd/resolve/resolv.conf
 EOF
 
 systemctl enable kubelet
-
