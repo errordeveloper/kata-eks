@@ -35,17 +35,19 @@ RUN >/var/lib/dbus/machine-id
 
 RUN systemctl set-default multi-user.target
 RUN systemctl mask \
+      console-getty.service \
       dev-hugepages.mount \
       sys-fs-fuse-connections.mount \
-      systemd-update-utmp.service \
       systemd-tmpfiles-setup.service \
-      console-getty.service
+      systemd-update-utmp.service \
+    && true
 RUN systemctl disable \
-      networkd-dispatcher.service
+      networkd-dispatcher.service \
+    && true
+RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system/
 
 # https://www.freedesktop.org/wiki/Software/systemd/ContainerInterface/
 STOPSIGNAL SIGRTMIN+3
-
 
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
