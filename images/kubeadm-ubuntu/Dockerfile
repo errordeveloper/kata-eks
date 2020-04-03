@@ -39,6 +39,7 @@ RUN systemctl set-default multi-user.target
 RUN systemctl mask \
       console-getty.service \
       dev-hugepages.mount \
+      kata-containers.target \
       proc-sys-fs-binfmt_misc.automount \
       sys-fs-fuse-connections.mount \
       systemd-tmpfiles-setup.service \
