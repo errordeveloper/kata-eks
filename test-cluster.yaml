@@ -4,14 +4,16 @@ items:
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    name: test-cluter-master
+    name: test-cluster-master
     labels:
       role: master
+      cluster: test-cluster
   spec:
     replicas: 1
     selector:
       matchLabels:
         role: master
+        cluster: test-cluster
     template:
       metadata:
         annotations:
@@ -20,6 +22,7 @@ items:
           io.katacontainers.config.hypervisor.image: /var/lib/images/kata.img
         labels:
           role: master
+          cluster: test-cluster
       spec:
         runtimeClassName: kata-qemu
         containers:
@@ -29,26 +32,34 @@ items:
           tty: true
           securityContext:
             privileged: true
+          command:
+            - /lib/systemd/systemd
+            - --unit=kubeadm-init.target
           readinessProbe:
             exec:
               command:
                 - systemctl
                 - is-active
-                - default.target
+                - kubeadm-init.target
             initialDelaySeconds: 60
             periodSeconds: 2
             failureThreshold: 500
+          env:
+            - name: KUBECONFIG
+              value: /etc/kubernetes/admin.conf
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
     name: test-cluster-node
     labels:
       role: node
+      cluster: test-cluster
   spec:
     replicas: 0
     selector:
       matchLabels:
         role: node
+        cluster: test-cluster
     template:
       metadata:
         annotations:
@@ -57,6 +68,7 @@ items:
           io.katacontainers.config.hypervisor.image: /var/lib/images/kata.img
         labels:
           role: node
+          cluster: test-cluster
       spec:
         runtimeClassName: kata-qemu
         containers:

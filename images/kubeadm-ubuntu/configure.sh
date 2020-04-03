@@ -229,6 +229,48 @@ oom_score = 0
     base_image_size = ""
 EOF
 
+cat > /etc/systemd/system/kubeadm-config-images-pull.service << EOF
+[Unit]
+After=containerd.service
+Requires=containerd.service
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=oneshot
+# --cri-runtime is required, as somehow autodetection is broken when this command
+# runs in the context of this systemd unit
+ExecStart=/usr/bin/kubeadm config images pull --cri-socket=/var/run/containerd/containerd.sock
+EOF
+
+systemctl enable kubeadm-config-images-pull
+
+cat > /etc/systemd/system/kubeadm-init.target << EOF
+[Unit]
+Requires=multi-user.target
+Conflicts=rescue.service rescue.target
+After=multi-user.target basic.target rescue.service rescue.target
+AllowIsolate=yes
+EOF
+
+cat > /etc/systemd/system/kubeadm-init.service << EOF
+[Unit]
+After=kubeadm-config-images-pull.target
+
+[Install]
+WantedBy=kubeadm-init.target
+
+[Service]
+Type=oneshot
+# it looks CPU detection doesn't work very well, and with 3 cores it still barks;
+# --cri-runtime is required also, as somehow autodetection is broken when
+# this command runs in the context of this systemd unit
+ExecStart=/usr/bin/kubeadm init --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
+EOF
+
+systemctl enable kubeadm-init.service
+
 cat > /etc/systemd/system/kubelet.service << EOF
 [Unit]
 Description=kubelet: The Kubernetes Node Agent
