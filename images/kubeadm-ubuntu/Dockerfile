@@ -60,4 +60,4 @@ COPY --from=errordeveloper/kata-agent:816ee8f1f-ubuntu-18.04-rootfs /lib/modules
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 
-CMD /lib/systemd/systemd
+CMD /sbin/init
