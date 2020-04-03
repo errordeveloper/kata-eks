@@ -39,7 +39,6 @@ RUN systemctl set-default multi-user.target
 RUN systemctl mask \
       console-getty.service \
       dev-hugepages.mount \
-      kata-containers.target \
       proc-sys-fs-binfmt_misc.automount \
       sys-fs-fuse-connections.mount \
       systemd-tmpfiles-setup.service \
@@ -60,4 +59,4 @@ COPY --from=errordeveloper/kata-agent:816ee8f1f-ubuntu-18.04-rootfs /lib/modules
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 
-CMD /sbin/init
+CMD ["/lib/systemd/systemd", "--unit=multi-user.target"]

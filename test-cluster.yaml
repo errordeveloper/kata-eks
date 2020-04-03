@@ -26,10 +26,18 @@ items:
         - name: console
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
           imagePullPolicy: Always
-          command: [/lib/systemd/systemd]
           tty: true
           securityContext:
             privileged: true
+          readinessProbe:
+            exec:
+              command:
+                - systemctl
+                - is-active
+                - default.target
+            initialDelaySeconds: 60
+            periodSeconds: 2
+            failureThreshold: 500
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -55,7 +63,15 @@ items:
         - name: console
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
           imagePullPolicy: Always
-          command: [/lib/systemd/systemd]
           tty: true
           securityContext:
             privileged: true
+          readinessProbe:
+            exec:
+              command:
+                - systemctl
+                - is-active
+                - default.target
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 500
