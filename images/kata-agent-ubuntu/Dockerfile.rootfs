@@ -2,4 +2,4 @@ ARG IMAGE_BUILDER
 FROM ${IMAGE_BUILDER} as image-builder
 FROM scratch
 COPY --from=image-builder /in /
-CMD /lib/systemd/systemd
+CMD /sbin/init

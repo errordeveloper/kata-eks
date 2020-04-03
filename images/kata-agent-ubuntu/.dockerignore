@@ -1,4 +1,4 @@
 Makefile
 Dockerfile
 Dockerfile.builder
-Dockerfile.alt
+Dockerfile.rootfs
