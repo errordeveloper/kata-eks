@@ -83,5 +83,3 @@ ConditionPathExists=/dev/ptp0
 EOF
 
 echo > /out/etc/resolv.conf
-
-cp /usr/share/systemd/tmp.mount /etc/systemd/system/
