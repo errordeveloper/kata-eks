@@ -106,8 +106,11 @@ systemctl enable containerd
 # containerd config default > /etc/containerd/config.toml
 cat > /etc/containerd/config.toml << EOF
 version = 2
-root = "/var/lib/containerd"
-state = "/run/containerd"
+# use tmpfs in /run for both directories now, we may preserve root in the future,
+# and possibly even preload it with images, but right now using /var/lib is broken
+# in kata as it's on 9p filesystem that doesn't permit mknod
+root = "/run/containerd/root"
+state = "/run/containerd/state"
 plugin_dir = ""
 disabled_plugins = []
 required_plugins = []
@@ -171,16 +174,7 @@ oom_score = 0
     max_concurrent_downloads = 3
     disable_proc_mount = false
     [plugins."io.containerd.grpc.v1.cri".containerd]
-      # check enable native snappshotter for now to get pass the issue with kube-proxy image
-      # but we need to check /proc/self/uid_map and see if RunningInUserNS is meant to trigger
-      # or not; see following:
-      # - https://github.com/containerd/containerd/blob/9ba5ea232c781438906be7858a26ad7db1aa1aae/vendor/github.com/opencontainers/runc/libcontainer/system/linux.go#L105
-      # - https://github.com/containerd/containerd/blob/9ba5ea232c781438906be7858a26ad7db1aa1aae/vendor/github.com/opencontainers/runc/libcontainer/system/linux.go#L114
-      # - https://github.com/containerd/containerd/blob/9ba5ea232c781438906be7858a26ad7db1aa1aae/diff/apply/apply_linux.go#L38
-      # - https://github.com/rancher/k3s/issues/924
-      # - https://github.com/containerd/containerd/issues/3762
-      # - https://github.com/containerd/containerd/pull/3763
-      snapshotter = "native" # "overlayfs"
+      snapshotter = "overlayfs"
       default_runtime_name = "runc"
       no_pivot = false
       [plugins."io.containerd.grpc.v1.cri".containerd.default_runtime]
