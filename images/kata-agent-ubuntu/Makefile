@@ -1,5 +1,4 @@
-KATA_AGENT_VERSION = 816ee8f1f# see https://github.com/kata-containers/agent/pull/768
-
+KATA_AGENT_VERSION = c3ba09430# see https://github.com/kata-containers/agent/pull/768
 IMAGE := errordeveloper/kata-agent:$(KATA_AGENT_VERSION)-ubuntu-18.04
 
 # This image has to be built in two stages as `docker build` context doesn't
