@@ -250,7 +250,7 @@ cat > /etc/systemd/system/kubelet.service << EOF
 [Unit]
 Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
-After=kubeadm.service
+Before=kubeadm.service
 
 [Install]
 WantedBy=kubeadm.target
