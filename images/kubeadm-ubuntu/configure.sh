@@ -4,37 +4,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-get_tarball() {
-  url="$1"
-  dir="$2"
-
-  tmp="$(mktemp)"
-
-  mkdir -p "${dir}"
-
-  curl --location --silent --output "${tmp}" "${url}"
-  tar -C "${dir}" -xf "${tmp}" 
-
-  rm -f "${tmp}"
-}
-
-get_file() {
-  url="$1"
-  output="$2"
-
-  mkdir -p "$(dirname "${output}")"
-
-  curl --location --silent --output "${output}" "${url}"
-}
-
-get_binary() {
-  url="$1"
-  output="/usr/bin/${2}"
-
-  get_file "${url}" "${output}"
-
-  chmod +x "${output}"
-}
+mkdir -p /etc/systemd/system /etc/containerd /etc/kubernetes/manifests /var/lib/kubelet /etc/cni/net.d
 
 cat > /etc/sysctl.d/99-kubernetes-cri.conf << EOF
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -46,33 +16,6 @@ cat > /etc/modules-load.d/99-containerd.conf << EOF
 overlay
 br_netfilter
 EOF
-
-ARCH="$(uname -m)"
-ALT_ARCH="${ARCH}"
-if [ "${ARCH}" = "x86_64" ] ; then
-  ALT_ARCH="amd64"
-fi
-
-CNI_VERSION="v0.8.2"
-get_tarball "https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-linux-${ALT_ARCH}-${CNI_VERSION}.tgz" /opt/cni/bin
-
-CRICTL_VERSION="v1.16.0"
-get_tarball "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-${ALT_ARCH}.tar.gz" /usr/bin
-
-
-CONTAINERD_VERSION="1.3.3"
-get_tarball "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}.linux-${ALT_ARCH}.tar.gz" /usr
-
-RUNC_VERSION="v1.0.0-rc10"
-get_binary "https://github.com/opencontainers/runc/releases/download/${RUNC_VERSION}/runc.${ALT_ARCH}" runc
-
-KUBERNETES_VERSION="v1.18.0"
-
-for b in kubeadm kubectl kubelet ; do
-  get_binary "https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/${ALT_ARCH}/${b}" "${b}"
-done
-
-mkdir -p /etc/systemd/system /etc/containerd /etc/kubernetes/manifests /var/lib/kubelet /etc/cni/net.d
 
 cat > /etc/systemd/system/containerd.service << EOF
 [Unit]
@@ -229,7 +172,35 @@ oom_score = 0
     base_image_size = ""
 EOF
 
-cat > /etc/systemd/system/kubeadm-config-images-pull.service << EOF
+cat > /usr/bin/preload-images.sh << EOF
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# TODO pick from a dir name based on \$KUBERNETES_VERSION
+# TODO pick master/node images also
+
+if ! [ -d /images ] ; then
+  echo "no /images directory present, skip image preload"
+  exit 0
+fi
+
+images=(\$(ls /images/*.dkr 2> /dev/null || true))
+if [ -z "\${images+x}" ] ; then
+  echo  "no /images/*.drk found, skip image preload"
+  exit 0
+fi
+
+for i in "\${images}" ; do
+   ctr -n k8s.io images import "\${i}"
+done
+
+EOF
+chmod +x /usr/bin/preload-images.sh
+
+cat > /etc/systemd/system/images.service << EOF
 [Unit]
 After=containerd.service
 Requires=containerd.service
@@ -239,14 +210,17 @@ WantedBy=multi-user.target
 
 [Service]
 Type=oneshot
+EnvironmentFile=/etc/versions.env
 # --cri-runtime is required, as somehow autodetection is broken when this command
 # runs in the context of this systemd unit
+ExecStart=/usr/bin/preload-images.sh
 ExecStart=/usr/bin/kubeadm config images pull --cri-socket=/var/run/containerd/containerd.sock
 EOF
 
-systemctl enable kubeadm-config-images-pull
+systemctl enable images
 
-cat > /etc/systemd/system/kubeadm-init.target << EOF
+
+cat > /etc/systemd/system/kubeadm.target << EOF
 [Unit]
 Requires=multi-user.target
 Conflicts=rescue.service rescue.target
@@ -254,12 +228,13 @@ After=multi-user.target basic.target rescue.service rescue.target
 AllowIsolate=yes
 EOF
 
-cat > /etc/systemd/system/kubeadm-init.service << EOF
+cat > /etc/systemd/system/kubeadm.service << EOF
 [Unit]
-After=kubeadm-config-images-pull.target
+After=images.service
+Requires=images.service
 
 [Install]
-WantedBy=kubeadm-init.target
+WantedBy=kubeadm.target
 
 [Service]
 Type=oneshot
@@ -269,15 +244,16 @@ Type=oneshot
 ExecStart=/usr/bin/kubeadm init --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
 EOF
 
-systemctl enable kubeadm-init.service
+systemctl enable kubeadm.service # TODO use a drop-in on nodes to override the command, or write a shell script wrapper
 
 cat > /etc/systemd/system/kubelet.service << EOF
 [Unit]
 Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
+After=kubeadm.service
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=kubeadm.target
 
 [Service]
 
@@ -299,7 +275,7 @@ ExecStart=/usr/bin/kubelet \
 
 Restart=always
 StartLimitInterval=0
-RestartSec=10
+RestartSec=5
 EOF
 
 cat > /etc/kubernetes/kubelet.yaml << EOF

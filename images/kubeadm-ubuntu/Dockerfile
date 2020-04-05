@@ -56,6 +56,9 @@ RUN mkdir -p /boot
 
 COPY --from=errordeveloper/kata-agent:816ee8f1f-ubuntu-18.04-rootfs /lib/modules /lib/modules
 
+COPY download.sh /tmp/download.sh
+RUN /tmp/download.sh
+
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 

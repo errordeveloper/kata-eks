@@ -1,6 +1,23 @@
 apiVersion: v1
 kind: List
 items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: test-cluster-master
+    labels:
+      cluster: test-cluster
+      role: master
+  spec:
+    ports:
+    - port: 6443
+      protocol: TCP
+      targetPort: 6443
+    selector:
+      cluster: test-cluster
+      role: master
+    sessionAffinity: None
+    type: ClusterIP
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -25,6 +42,11 @@ items:
           cluster: test-cluster
       spec:
         runtimeClassName: kata-qemu
+        volumes:
+          - name: images
+            hostPath:
+              path: /var/lib/images
+              type: Directory
         containers:
         - name: console
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
@@ -34,19 +56,30 @@ items:
             privileged: true
           command:
             - /lib/systemd/systemd
-            - --unit=kubeadm-init.target
+            - --unit=kubeadm.target
           readinessProbe:
             exec:
               command:
                 - systemctl
+                - --no-pager
                 - is-active
-                - kubeadm-init.target
-            initialDelaySeconds: 60
+                - kubeadm.target
+            initialDelaySeconds: 180
             periodSeconds: 2
             failureThreshold: 500
           env:
             - name: KUBECONFIG
               value: /etc/kubernetes/admin.conf
+          volumeMounts:
+            - mountPath: /images
+              name: images
+          resources:
+            requests:
+              memory: 4Gi
+              cpu: 2.1
+            limits:
+              memory: 4Gi
+              cpu: 2.1
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -82,6 +115,7 @@ items:
             exec:
               command:
                 - systemctl
+                - --no-pager
                 - is-active
                 - default.target
             initialDelaySeconds: 60
