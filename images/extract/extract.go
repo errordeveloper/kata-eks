@@ -85,50 +85,6 @@ func main() {
 	log.Printf("wrote %d files to %q", filesWritten, *outDir)
 }
 
-func doCopy(copyingWorkGroup *sync.WaitGroup, fileName, outDir string, errs chan error) {
-	defer copyingWorkGroup.Done()
-
-	// TODO: support directories
-
-	inputFile, err := os.Open(fileName)
-	if err != nil {
-		errs <- fmt.Errorf("error opening %q: %w", fileName, err)
-		return
-	}
-	defer inputFile.Close()
-
-	inputFileInfo, err := inputFile.Stat()
-	if err != nil {
-		errs <- fmt.Errorf("cannot stat %q: %w", fileName, err)
-		return
-	}
-
-	outputPath := filepath.Join(outDir, fileName)
-	//os.MkdirAll(path.Dir(outputPath, 0755))
-	outputFile, err := os.OpenFile(outputPath, os.O_CREATE|os.O_RDWR, inputFileInfo.Mode())
-	if err != nil {
-		errs <- fmt.Errorf("error opening %q for writing: %w", outputPath, err)
-		return
-	}
-	defer outputFile.Close()
-
-	// when a file is being overwritten it needs an explicit chmod
-	err = outputFile.Chmod(inputFileInfo.Mode())
-	if err != nil {
-		errs <- fmt.Errorf("cannot chmod %q: %w", outputPath, err)
-		return
-	}
-
-	_, err = io.Copy(outputFile, inputFile)
-	if err != nil {
-		errs <- fmt.Errorf("error writing to %q: %w", outputPath, err)
-		return
-	}
-
-	log.Printf("copied %q to %q", fileName, outputPath)
-	errs <- nil
-}
-
 func doTraverseTree(src, dst string, errs chan error, copiers chan func(*sync.WaitGroup, chan error)) {
 	src = filepath.Clean(src)
 	dst = filepath.Clean(dst)
@@ -169,7 +125,15 @@ func doTraverseTree(src, dst string, errs chan error, copiers chan func(*sync.Wa
 			doTraverseTree(srcPath, dstPath, errs, copiers)
 		} else {
 			if entry.Mode()&os.ModeSymlink != 0 {
-				errs <- fmt.Errorf("skipping symlink %q: %w", srcPath, err)
+				srcSymlinkTarget, err := os.Readlink(srcPath)
+				if err != nil {
+					errs <- fmt.Errorf("cannot resolve symlink %q: %w", srcPath, err)
+				}
+				err = os.Symlink(srcSymlinkTarget, dstPath)
+				if err != nil {
+					errs <- fmt.Errorf("cannot create symlink %q: %w", dstPath, err)
+				}
+				log.Printf("created symlink at %q (%q)", dstPath, srcSymlinkTarget)
 				return
 			}
 
@@ -193,6 +157,27 @@ func doCopyFile(wg *sync.WaitGroup, srcPath, dstPath string, errs chan error) {
 		return
 	}
 	defer srcFile.Close()
+
+	srcInfo, err := srcFile.Stat()
+	if err != nil {
+		errs <- fmt.Errorf("cannot stat %q: %w", srcPath, err)
+		return
+	}
+
+	// check if file exists, if so remove it to prvent 'text file busy' errors
+	// when overwriting system binaries
+	_, err = os.Stat(dstPath)
+	if err != nil && !os.IsNotExist(err) {
+		errs <- fmt.Errorf("cannot stat existing file %q: %w", dstPath, err)
+		return
+	}
+	if err == nil {
+		err = os.Remove(dstPath)
+		if err != nil {
+			errs <- fmt.Errorf("cannot remove %q: %w", dstPath, err)
+			return
+		}
+	}
 
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
@@ -218,11 +203,6 @@ func doCopyFile(wg *sync.WaitGroup, srcPath, dstPath string, errs chan error) {
 		return
 	}
 
-	srcInfo, err := os.Stat(srcPath)
-	if err != nil {
-		errs <- fmt.Errorf("cannot stat %q: %w", srcPath, err)
-		return
-	}
 	err = os.Chmod(dstPath, srcInfo.Mode())
 	if err != nil {
 		errs <- fmt.Errorf("cannot chmod %q: %w", dstPath, err)
