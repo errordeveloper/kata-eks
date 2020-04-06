@@ -35,7 +35,7 @@ items:
       metadata:
         annotations:
           io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
-          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
+          #io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
           io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
         labels:
           role: master
@@ -88,7 +88,7 @@ items:
       role: node
       cluster: test-cluster
   spec:
-    replicas: 0
+    replicas: 2
     selector:
       matchLabels:
         role: node
@@ -97,7 +97,7 @@ items:
       metadata:
         annotations:
           io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
-          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
+          #io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
           io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
         labels:
           role: node
@@ -117,7 +117,7 @@ items:
                 - systemctl
                 - --no-pager
                 - is-active
-                - default.target
-            initialDelaySeconds: 60
-            periodSeconds: 10
+                - multi-user.target
+            initialDelaySeconds: 120
+            periodSeconds: 2
             failureThreshold: 500
