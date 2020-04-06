@@ -45,8 +45,6 @@ EOF
 
 systemctl enable containerd
 
-#containerd config default | sed 's/systemd_cgroup = false/systemd_cgroup = true/' > /etc/containerd/config.toml
-# containerd config default > /etc/containerd/config.toml
 cat > /etc/containerd/config.toml << EOF
 version = 2
 # use tmpfs in /run for both directories now, we may preserve root in the future,
@@ -241,7 +239,7 @@ Type=oneshot
 # it looks CPU detection doesn't work very well, and with 3 cores it still barks;
 # --cri-runtime is required also, as somehow autodetection is broken when
 # this command runs in the context of this systemd unit
-ExecStart=/usr/bin/kubeadm init --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
+ExecStart=/usr/bin/kubeadm init --v=9 --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
 EOF
 
 systemctl enable kubeadm.service # TODO use a drop-in on nodes to override the command, or write a shell script wrapper
