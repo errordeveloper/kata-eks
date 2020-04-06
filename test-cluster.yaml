@@ -35,8 +35,11 @@ items:
       metadata:
         annotations:
           io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
-          #io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
+          # kata cannot set VM memory correctly with linuxit kernel - TODO check if CONFIG_MEMORY_HOTPLUG is set
+          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
           io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
+          io.katacontainers.config.hypervisor.default_vcpus: "2"
+          io.katacontainers.config.hypervisor.default_memory: "4096"
         labels:
           role: master
           cluster: test-cluster
@@ -73,13 +76,13 @@ items:
           volumeMounts:
             - mountPath: /images
               name: images
-          resources:
-            requests:
-              memory: 4Gi
-              cpu: 2.1
-            limits:
-              memory: 4Gi
-              cpu: 2.1
+          #resources:
+          #  requests:
+          #    memory: 4Gi
+          #    cpu: 2.1
+          #  limits:
+          #    memory: 4Gi
+          #    cpu: 2.1
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
