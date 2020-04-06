@@ -7,11 +7,55 @@ metadata:
   version: "1.15"
 
 nodeGroups:
-  - name: ng-6
+  - name: ng-8
     instanceType: i3.metal
     desiredCapacity: 1
     ssh: {allow: true}
     preBootstrapCommands:
+      # TODO this can be a daemonset, just need to figure out how to call systemctl,
+      # it also means that kubelet would have to be restarted
+      - docker run -v /:/out errordeveloper/kata-installer@sha256:f745537b920b13454e6166be69e3c7079b903cdcc732e1eda26c574b5c20a33d
+
+        systemctl daemon-reload
+        systemctl restart containerd
+        modprobe vhost_vsock
+
+    kubeletExtraConfig:
+        cgroupDriver: systemd
+        kubeReserved:
+            cpu: "300m"
+            memory: "300Mi"
+            ephemeral-storage: "1Gi"
+        kubeReservedCgroup: "/kube-reserved"
+        systemReserved:
+            cpu: "300m"
+            memory: "300Mi"
+            ephemeral-storage: "1Gi"
+        evictionHard:
+            memory.available:  "200Mi"
+            nodefs.available: "10%"
+        featureGates:
+            DynamicKubeletConfig: true
+            RotateKubeletServerCertificate: true
+
+
+        serializeImagePulls: false
+        tlsCipherSuites:
+          - "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+          - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+          - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305"
+          - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+          - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+          - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+          - "TLS_RSA_WITH_AES_256_GCM_SHA384"
+          - "TLS_RSA_WITH_AES_128_GCM_SHA256"
+
+  - name: ng-7
+    instanceType: i3.metal
+    desiredCapacity: 0
+    ssh: {allow: true}
+    preBootstrapCommands:
+      - docker version > /etc/docker-version-test || true
       # override kubelet flags to use containerd runtime
       - |
         mkdir -p /etc/systemd/system/kubelet.service.d
