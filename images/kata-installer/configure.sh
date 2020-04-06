@@ -4,7 +4,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-mkdir -p /data/etc/sysctl.d /data/etc/modules-load.d /data/etc/systemd/system /data/etc/containerd
+mkdir -p /data/etc/sysctl.d /data/etc/modules-load.d /data/etc/systemd/system /data/etc/containerd /data/var/lib/images
 
 cat > /data/etc/sysctl.d/99-kubernetes-cri.conf << EOF
 net.bridge.bridge-nf-call-ip6tables = 1
