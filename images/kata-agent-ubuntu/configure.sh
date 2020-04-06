@@ -82,4 +82,16 @@ cat > /etc/systemd/system/chronyd.service.d/10-ptp.conf << EOF
 ConditionPathExists=/dev/ptp0
 EOF
 
+mkdir -p /etc/systemd/system/kata-agent.service.d
+
+cat > /etc/systemd/system/kata-agent.service.d/10-delegate.conf << EOF
+[Service]
+Delegate=yes
+KillMode=process
+LimitNPROC=infinity
+LimitCORE=infinity
+LimitNOFILE=1048576
+TasksMax=infinity
+EOF
+
 echo > /out/etc/resolv.conf
