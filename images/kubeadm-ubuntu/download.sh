@@ -48,7 +48,6 @@ get_tarball "https://github.com/containernetworking/plugins/releases/download/${
 CRICTL_VERSION="v1.16.0"
 get_tarball "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-${ALT_ARCH}.tar.gz" /usr/bin
 
-
 CONTAINERD_VERSION="1.3.3"
 get_tarball "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}.linux-${ALT_ARCH}.tar.gz" /usr
 
