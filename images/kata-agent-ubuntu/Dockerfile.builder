@@ -99,7 +99,6 @@ RUN dnf install -y \
 #    && true
 
 FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a051853a341d as image-builder
-RUN mkdir /out
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
@@ -111,21 +110,23 @@ RUN apt-get update \
     && true
 
 COPY --from=rootfs / /in
+RUN mkdir -p /out/vm /out/kernel/ubuntu-bionic /out/kernel/centos-7 /out/kernel/centos-8 /out/kernel/linuxkit
+#RUN mkdir -p /out/vm /out/kernel/{ubuntu-bionic,centos-7,centos-8,linuxkit}
 
 COPY --from=ubuntu-bionic-kernels /lib/modules /in/lib/modules
-COPY --from=ubuntu-bionic-kernels /boot /out
+COPY --from=ubuntu-bionic-kernels /boot /out/ubuntu-bionic
 
 COPY --from=centos-7-kernels /lib/modules /in/lib/modules
-COPY --from=centos-7-kernels /boot /out
+COPY --from=centos-7-kernels /boot /out/kernel/centos-7
 
 COPY --from=centos-8-kernels /lib/modules /in/lib/modules
-RUN mv /in/lib/modules/4.18.0-147.5.1.el8_1.x86_64/vmlinuz /out/vmlinuz-4.18.0-147.5.1.el8_1.x86_64
+RUN mv /in/lib/modules/4.18.0-147.5.1.el8_1.x86_64/vmlinuz /out/kernel/centos-8/vmlinuz-4.18.0-147.5.1.el8_1.x86_64
 
-COPY --from=linuxkit/kernel:4.19.104 /kernel /out/vmlinuz-4.19.104-linuxkit
+COPY --from=linuxkit/kernel:4.19.104 /kernel /out/kernel/linuxkit/vmlinuz-4.19.104-linuxkit
 COPY --from=linuxkit/kernel:4.19.104 /kernel.tar /tmp/modules.tar
 RUN tar -C /in -xf /tmp/modules.tar && rm -f /tmp/modules.tar
 
-COPY --from=linuxkit/kernel:5.4.19 /kernel /out/vmlinuz-5.4.19-linuxkit
+COPY --from=linuxkit/kernel:5.4.19 /kernel /out/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
 COPY --from=linuxkit/kernel:5.4.19 /kernel.tar /tmp/modules.tar
 RUN tar -C /in -xf /tmp/modules.tar && rm -f /tmp/modules.tar
 
@@ -133,4 +134,4 @@ COPY make-image.sh /tmp/make-image.sh
 COPY nsdax.gpl.c /tmp/nsdax.gpl.c
 
 WORKDIR /tmp
-CMD /tmp/make-image.sh -o /out/kata.img /in
+CMD /tmp/make-image.sh -o /out/vm/kata-agent-ubuntu.img /in
