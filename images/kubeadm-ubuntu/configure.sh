@@ -134,6 +134,8 @@ oom_score = 0
           runtime_engine = ""
           runtime_root = ""
           privileged_without_host_devices = false
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
     [plugins."io.containerd.grpc.v1.cri".cni]
       bin_dir = "/opt/cni/bin"
       conf_dir = "/etc/cni/net.d"
@@ -267,7 +269,7 @@ EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
 #ExecStart=/usr/bin/kubelet \$KUBELET_KUBECONFIG_ARGS \$KUBELET_CONFIG_ARGS \$KUBELET_KUBEADM_ARGS \$KUBELET_EXTRA_ARGS
 
 ExecStart=/usr/bin/kubelet \
-  --config=/var/lib/kubelet/config.yaml \
+  --config=/etc/kubernetes/kubelet.yaml \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf \
   --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock
 
@@ -310,7 +312,7 @@ staticPodPath: /etc/kubernetes/manifests
 streamingConnectionIdleTimeout: 0s
 syncFrequency: 0s
 volumeStatsAggPeriod: 0s
-# cgroupDriver: systemd
+cgroupDriver: systemd
 resolvConf: /run/systemd/resolve/resolv.conf
 EOF
 

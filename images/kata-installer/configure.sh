@@ -168,6 +168,8 @@ oom_score = 0
           runtime_engine = ""
           runtime_root = ""
           privileged_without_host_devices = false
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
         [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.kata-qemu]
           runtime_type = "io.containerd.kata-qemu.v2"
           pod_annotations = ["io.katacontainers.*"]
