@@ -50,10 +50,23 @@ items:
             hostPath:
               path: /var/lib/images
               type: Directory
+          - name: bpf-maps
+            hostPath:
+              path: /sys/fs/bpf
+              type: DirectoryOrCreate
+        volumes:
+          - name: images
+            hostPath:
+              path: /var/lib/images
+              type: Directory
+          - name: bpf-maps
+            hostPath:
+              path: /sys/fs/bpf
+              type: DirectoryOrCreate
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:e767105c84dfe656298b840fe6eb10e4407d219ab74b07d015c27f83ea34311f
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -77,6 +90,8 @@ items:
           volumeMounts:
             - mountPath: /images
               name: images
+            - mountPath: /sys/fs/bpf # TODO set slave or shared propogation - can it be done here or we need to hack the kata image?
+              name: bpf-maps
           #resources:
           #  requests:
           #    memory: 4Gi
@@ -108,6 +123,15 @@ items:
           cluster: test-cluster
       spec:
         runtimeClassName: kata-qemu
+        volumes:
+          - name: images
+            hostPath:
+              path: /var/lib/images
+              type: Directory
+          - name: bpf-maps
+            hostPath:
+              path: /sys/fs/bpf
+              type: DirectoryOrCreate
         containers:
         - name: console
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
@@ -125,3 +149,8 @@ items:
             initialDelaySeconds: 120
             periodSeconds: 2
             failureThreshold: 500
+          volumeMounts:
+            - mountPath: /images
+              name: images
+            - mountPath: /sys/fs/bpf
+              name: bpf-maps
