@@ -51,6 +51,9 @@ RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system/
 # https://www.freedesktop.org/wiki/Software/systemd/ContainerInterface/
 STOPSIGNAL SIGRTMIN+3
 
+ARG DEBUG_SSH_PUBLIC_KEYS
+RUN test -z "${DEBUG_SSH_PUBLIC_KEYS}" || printf "${DEBUG_SSH_PUBLIC_KEYS}" > /tmp/authorized_keys
+
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 

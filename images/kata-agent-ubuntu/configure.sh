@@ -116,14 +116,6 @@ EOF
 
 systemctl enable kata-debug
 
-mkdir -p /root/.ssh
-
-cat > /root/.ssh/authorized_keys << EOF
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC6ztsOLv6qizzNz0uXJRJEkdxLL+1mb98Y06AUocY65UuAopkpt5rVgwEdhWHT4uNft8cprcv8ctrZzxWhhTXPrj3eGQ1Di5ky6htoPPvJO/KXowdnOg35BY2VMnkenczFOkMuKiEAUEcZt3LBRsbu0gnuZtc5wfkurB3PjWGQhFLHGlUC6mNpMnlrPvxjwK80yXAQ8Jz4xg0vN5raC56HDLOO0UVlgxze9JqWT27ZQgPsntSsQ7uya5JfleyxP6peR2ul90Qj8aPlArRIqvyofnE+v4XdmlOutTdeu/zhcAJ7IiAvDXai6P5wGCiumksA+vxpiHXct4w3MMBQ6Ihn ilya@wroom3.local
-EOF
-
-chmod 0600 /root/.ssh/authorized_keys
-
 cat > /etc/systemd/system/dropbear-debug.service << EOF
 [Unit]
 Before=kata-agent.service
@@ -136,7 +128,14 @@ ExecStart=/usr/sbin/dropbear -s -E -F
 Restart=always
 EOF
 
-systemctl enable dropbear-debug
+if [ -e /tmp/authorized_keys ] ; then
+  mkdir -p /root/.ssh
+  mv /tmp/authorized_keys /root/.ssh/authorized_keys
+  chmod 0600 /root/.ssh/authorized_keys
+
+
+  systemctl enable dropbear-debug
+fi
 
 systemctl enable auditd
 
