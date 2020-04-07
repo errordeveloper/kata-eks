@@ -39,11 +39,11 @@ readonly dax_header_sz=2
 readonly dax_alignment=2
 
 # The list of systemd units and files that are not needed in Kata Containers
+#"systemd-journald"
+#"systemd-journald-dev-log"
+#"systemd-journal-flush"
 readonly -a systemd_units=(
 	"systemd-coredump@"
-	"systemd-journald"
-	"systemd-journald-dev-log"
-	"systemd-journal-flush"
 	"systemd-random-seed"
 	"systemd-timesyncd"
 	"systemd-tmpfiles-setup"

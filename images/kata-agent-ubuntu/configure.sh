@@ -19,6 +19,7 @@ vmw_vsock_virtio_transport_common
 EOF
 
 mkdir -p /out/etc/chrony
+
 cat > /out/etc/chrony/chrony.conf << EOF
 # Welcome to the chrony configuration file. See chrony.conf(5) for more
 # information about usuable directives.
@@ -77,6 +78,7 @@ makestep 1 -1
 EOF
 
 mkdir -p /etc/systemd/system/chronyd.service.d
+
 cat > /etc/systemd/system/chronyd.service.d/10-ptp.conf << EOF
 [Unit]
 ConditionPathExists=/dev/ptp0
@@ -93,5 +95,49 @@ LimitCORE=infinity
 LimitNOFILE=1048576
 TasksMax=infinity
 EOF
+
+cat > /etc/systemd/system/kata-debug.service << EOF
+[Unit]
+Description=Kata Containers debug console -l
+Before=kata-agent.service
+
+[Install]
+WantedBy=kata-containers.target
+
+[Service]
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+StandardInput=tty
+StandardOutput=tty
+PrivateDevices=no
+Type=simple
+ExecStart=/bin/bash -l
+Restart=always
+EOF
+
+systemctl enable kata-debug
+
+mkdir -p /root/.ssh
+
+cat > /root/.ssh/authorized_keys << EOF
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC6ztsOLv6qizzNz0uXJRJEkdxLL+1mb98Y06AUocY65UuAopkpt5rVgwEdhWHT4uNft8cprcv8ctrZzxWhhTXPrj3eGQ1Di5ky6htoPPvJO/KXowdnOg35BY2VMnkenczFOkMuKiEAUEcZt3LBRsbu0gnuZtc5wfkurB3PjWGQhFLHGlUC6mNpMnlrPvxjwK80yXAQ8Jz4xg0vN5raC56HDLOO0UVlgxze9JqWT27ZQgPsntSsQ7uya5JfleyxP6peR2ul90Qj8aPlArRIqvyofnE+v4XdmlOutTdeu/zhcAJ7IiAvDXai6P5wGCiumksA+vxpiHXct4w3MMBQ6Ihn ilya@wroom3.local
+EOF
+
+chmod 0600 /root/.ssh/authorized_keys
+
+cat > /etc/systemd/system/dropbear-debug.service << EOF
+[Unit]
+Before=kata-agent.service
+
+[Install]
+WantedBy=kata-containers.target
+
+[Service]
+ExecStart=/usr/sbin/dropbear -s -E -F
+Restart=always
+EOF
+
+systemctl enable dropbear-debug
+
+systemctl enable auditd
 
 echo > /out/etc/resolv.conf

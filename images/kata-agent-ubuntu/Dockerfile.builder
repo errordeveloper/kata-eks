@@ -13,8 +13,10 @@ RUN find /etc/systemd/system /lib/systemd/system \
 RUN apt-get update \
     && apt-get upgrade --yes \
     && apt-get install --yes --no-install-recommends \
+      auditd \
       chrony \
       dbus \
+      dropbear \
       init \
       iproute2 \
       iptables \
