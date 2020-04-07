@@ -27,7 +27,6 @@ After=network.target local-fs.target
 WantedBy=multi-user.target
 
 [Service]
-#ExecStartPre=-/sbin/modprobe overlay
 ExecStart=/usr/bin/containerd
 Delegate=yes
 KillMode=process
@@ -256,25 +255,11 @@ Before=kubeadm.service
 WantedBy=kubeadm.target
 
 [Service]
-
-## NOTE: This is what kubeadm unit spec looks like, we attempt to ignore it and use a more concrete config instead
-#Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
-#Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
-## This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
-EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
-## This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
-## the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
-#EnvironmentFile=-/etc/default/kubelet
-#EnvironmentFile=-/etc/sysconfig/kubelet
-#ExecStart=/usr/bin/kubelet \$KUBELET_KUBECONFIG_ARGS \$KUBELET_CONFIG_ARGS \$KUBELET_KUBEADM_ARGS \$KUBELET_EXTRA_ARGS
-
 ExecStart=/usr/bin/kubelet \
   --config=/etc/kubernetes/kubelet.yaml \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf \
   --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock
-
 Delegate=yes
-
 Restart=always
 StartLimitInterval=0
 RestartSec=5
