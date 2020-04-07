@@ -68,7 +68,13 @@ run Kata pods/VMs and any workload in general.
 kubectl get pods --namespace=kube-system
 ```
 
-Now, deploy a workload, which in our case is a Kubernetes 1.18 cluster running in `kata-qemu` pods:
+Now, you can try `kubectl apply -f podinfo.yaml` and just deploy a simple app with `runtimeClass: kata-qemu`.
+
+# Work-in-progress: running Kubernetes
+
+You might like to look at `images/kubeadm-ubuntu`, or just deploy the pods and take it from there:
 ```
 kubectl apply -f test-cluster.yaml
 ```
+
+The master should come and attempt to run `kubeadm init`...
