@@ -62,4 +62,5 @@ RUN /tmp/download.sh
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 
+ENV container container-other # systemd respects this
 CMD ["/lib/systemd/systemd", "--unit=multi-user.target"]
