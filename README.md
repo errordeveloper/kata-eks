@@ -77,4 +77,6 @@ You might like to look at `images/kubeadm-ubuntu`, or just deploy the pods and t
 kubectl apply -f test-cluster.yaml
 ```
 
-The master should come and attempt to run `kubeadm init`...
+The master pod should become 'Ready' once it ran `kubeadm init`.
+
+To test the master pod, try `./kubectl-each-master.sh get nodes`.
