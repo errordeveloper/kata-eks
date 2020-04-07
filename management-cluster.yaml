@@ -3,11 +3,11 @@ kind: ClusterConfig
 
 metadata:
   region: eu-west-1
-  name: test-kata-fc-2
+  name: kata-1
   version: "1.15"
 
 nodeGroups:
-  - name: ng-8
+  - name: kata-ng-1
     instanceType: i3.metal
     desiredCapacity: 1
     ssh: {allow: true}
@@ -16,7 +16,7 @@ nodeGroups:
       # it also means that kubelet would have to be restarted
       - systemctl stop kubelet
 
-        hocker run -v /:/out errordeveloper/kata-installer@sha256:b5a87adf9a5d340a11b5eb38776d1ee8fbc711b7fdf82f59a17f5c4b6ad0b243
+        hocker run -v /:/out errordeveloper/kata-installer@sha256:40f08db23c58eb8fa9b956aad9a83887bfae2e380c08db0ea4d9e202f92f2f7b
 
         systemctl daemon-reload
         systemctl restart containerd
