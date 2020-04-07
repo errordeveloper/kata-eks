@@ -14,9 +14,10 @@ nodeGroups:
     preBootstrapCommands:
       # TODO this can be a daemonset, just need to figure out how to call systemctl,
       # it also means that kubelet would have to be restarted
-      - systemctl stop kubelet
+      - |
+        systemctl stop kubelet
 
-        hocker run -v /:/out errordeveloper/kata-installer@sha256:40f08db23c58eb8fa9b956aad9a83887bfae2e380c08db0ea4d9e202f92f2f7b
+        docker run -v /:/out errordeveloper/kata-installer@sha256:40f08db23c58eb8fa9b956aad9a83887bfae2e380c08db0ea4d9e202f92f2f7b
 
         systemctl daemon-reload
         systemctl restart containerd
