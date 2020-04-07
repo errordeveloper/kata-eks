@@ -10,5 +10,5 @@ items:
   kind: RuntimeClass
   metadata:
     name: kata-fc
+  # TODO: Firecracker is not working yet, containerd needs devicemapper snaphotter for it to work
   handler: kata-fc
-
