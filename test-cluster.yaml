@@ -50,6 +50,7 @@ items:
             hostPath:
               path: /var/lib/images
               type: Directory
+        # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
@@ -91,7 +92,7 @@ items:
       role: node
       cluster: test-cluster
   spec:
-    replicas: 2
+    replicas: 0
     selector:
       matchLabels:
         role: node
