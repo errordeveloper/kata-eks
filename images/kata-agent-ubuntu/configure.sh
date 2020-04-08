@@ -156,6 +156,9 @@ LimitNOFILE=infinity
 # the runtime handles shutting down the VM.
 ExecStop=/bin/sync ; /usr/bin/systemctl --force poweroff
 FailureAction=poweroff
+
+[Install]
+WantedBy=kata-containers.target
 EOF
 
 mkdir -p /etc/systemd/system/kata-agent.service.d
