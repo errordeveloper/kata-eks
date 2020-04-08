@@ -96,6 +96,25 @@ LimitNOFILE=1048576
 TasksMax=infinity
 EOF
 
+# source: https://github.com/cilium/cilium/blob/99a5aae2909f796d0e10341b9a2256444856eed4/contrib/systemd/sys-fs-bpf.mount
+cat > /etc/systemd/system/sys-fs-bpf.mount << EOF
+[Unit]
+Description=Cilium BPF mounts
+Documentation=http://docs.cilium.io/
+DefaultDependencies=no
+Before=local-fs.target umount.target
+After=swap.target
+
+[Mount]
+What=bpffs
+Where=/sys/fs/bpf
+Type=bpf
+Options=rw,nosuid,nodev,noexec,relatime,mode=700
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 cat > /etc/systemd/system/kata-debug.service << EOF
 [Unit]
 Description=Kata Containers debug console -l
