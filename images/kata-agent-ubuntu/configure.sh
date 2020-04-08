@@ -13,10 +13,17 @@ EOF
 cat > /etc/modules-load.d/99-containerd.conf << EOF
 overlay
 br_netfilter
+EOF
+
+cat > /etc/modules-load.d/99-vsock.conf << EOF
 vsock
 vmw_vsock_virtio_transport
 vmw_vsock_virtio_transport_common
 EOF
+
+cp /usr/share/systemd/tmp.mount /etc/systemd/system/
+
+systemctl enable tmp.mount
 
 mkdir -p /out/etc/chrony
 
@@ -84,19 +91,7 @@ cat > /etc/systemd/system/chronyd.service.d/10-ptp.conf << EOF
 ConditionPathExists=/dev/ptp0
 EOF
 
-mkdir -p /etc/systemd/system/kata-agent.service.d
-
-cat > /etc/systemd/system/kata-agent.service.d/10-delegate.conf << EOF
-[Service]
-Delegate=yes
-KillMode=process
-LimitNPROC=infinity
-LimitCORE=infinity
-LimitNOFILE=1048576
-TasksMax=infinity
-EOF
-
-# source: https://github.com/cilium/cilium/blob/99a5aae2909f796d0e10341b9a2256444856eed4/contrib/systemd/sys-fs-bpf.mount
+# based on: https://github.com/cilium/cilium/blob/99a5aae2909f796d0e10341b9a2256444856eed4/contrib/systemd/sys-fs-bpf.mount
 cat > /etc/systemd/system/sys-fs-bpf.mount << EOF
 [Unit]
 Description=Cilium BPF mounts
@@ -112,8 +107,70 @@ Type=bpf
 Options=rw,nosuid,nodev,noexec,relatime,mode=700
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target kata-containers.target
 EOF
+
+systemctl enable sys-fs-bpf.mount
+
+# based on: https://github.com/kata-containers/agent/blob/73afd1a31736490e5fda4c4b779d84f945acb187/kata-containers.target
+cat > /etc/systemd/system/kata-containers.target << EOF
+#
+# Copyright (c) 2018-2019 Intel Corporation
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+[Unit]
+Description=Kata Containers Agent Target
+Requires=basic.target
+Requires=tmp.mount
+Requires=sys-fs-bpf.mount
+Wants=chronyd.service
+Requires=kata-agent.service
+Conflicts=rescue.service rescue.target
+After=basic.target rescue.service rescue.target
+AllowIsolate=yes
+EOF
+
+# https://github.com/kata-containers/agent/blob/73afd1a31736490e5fda4c4b779d84f945acb187/kata-agent.service.in
+cat > /etc/systemd/system/kata-agent.service << EOF
+#
+# Copyright (c) 2018-2019 Intel Corporation
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+[Unit]
+Description=Kata Containers Agent
+Documentation=https://github.com/kata-containers/agent
+Wants=kata-containers.target
+
+[Service]
+# Send agent output to tty to allow capture debug logs
+# from a VM serial port
+StandardOutput=tty
+Type=simple
+ExecStart=/usr/bin/kata-agent
+LimitNOFILE=infinity
+# ExecStop is required for static agent tracing; in all other scenarios
+# the runtime handles shutting down the VM.
+ExecStop=/bin/sync ; /usr/bin/systemctl --force poweroff
+FailureAction=poweroff
+EOF
+
+mkdir -p /etc/systemd/system/kata-agent.service.d
+
+cat > /etc/systemd/system/kata-agent.service.d/10-delegate.conf << EOF
+[Service]
+Delegate=yes
+KillMode=process
+LimitNPROC=infinity
+LimitCORE=infinity
+LimitNOFILE=1048576
+TasksMax=infinity
+EOF
+
+systemctl enable kata-agent
 
 cat > /etc/systemd/system/kata-debug.service << EOF
 [Unit]
