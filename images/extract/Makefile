@@ -1,7 +1,7 @@
 IMAGE := errordeveloper/extract
 
-image:
+build:
 	docker build --tag $(IMAGE) .
 
-push: image
+push: build
 	docker push $(IMAGE)

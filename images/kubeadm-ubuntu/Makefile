@@ -1,5 +1,5 @@
-image:
+build:
 	docker build -t errordeveloper/kubeadm:ubuntu-18.04-1.18.0 .
 
-push: image
+push: build
 	docker push errordeveloper/kubeadm:ubuntu-18.04-1.18.0

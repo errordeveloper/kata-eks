@@ -1,5 +1,5 @@
-image:
+build:
 	docker build -t errordeveloper/kata-installer:latest .
 
-push: image
+push: build
 	docker push errordeveloper/kata-installer:latest
