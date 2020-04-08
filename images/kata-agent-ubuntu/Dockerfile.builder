@@ -65,10 +65,8 @@ RUN go get -d "${KATA_AGENT_IMPORT_PATH}" \
    && git remote add fork https://github.com/errordeveloper/kata-agent \
    && git fetch fork \
    && git checkout -q "${KATA_AGENT_VERSION}" \
-   && make INIT=no SECCOMP=no \
+   && make INIT=yes SECCOMP=no TRACE=no \
    && make install DESTDIR=/out \
-   && mkdir -p /out/etc/systemd/system/basic.target.wants \
-   && ln -sf /usr/lib/systemd/system/kata-containers.target /out/etc/systemd/system/basic.target.wants/kata-containers.target
 
 FROM scratch as rootfs
 COPY --from=rootfs-builder / /
