@@ -17,6 +17,14 @@ overlay
 br_netfilter
 EOF
 
+cat > /etc/modules-load.d/99-cilium.conf << EOF
+sch_ingress
+EOF
+
+cp /usr/share/systemd/tmp.mount /etc/systemd/system/
+
+systemctl enable tmp.mount
+
 cat > /etc/systemd/system/containerd.service << EOF
 [Unit]
 Description=containerd container runtime

@@ -47,7 +47,6 @@ RUN systemctl mask \
 RUN systemctl disable \
       networkd-dispatcher.service \
     && true
-RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system/
 
 # https://www.freedesktop.org/wiki/Software/systemd/ContainerInterface/
 STOPSIGNAL SIGRTMIN+3
