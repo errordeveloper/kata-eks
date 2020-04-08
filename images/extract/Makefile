@@ -1,7 +1,8 @@
-IMAGE := errordeveloper/extract
+IMAGE := errordeveloper/extract:latest
 
 build:
-	docker build --tag $(IMAGE) .
+	docker image build --tag $(IMAGE) .
 
 push: build
-	docker push $(IMAGE)
+	docker image push $(IMAGE)
+	docker image inspect --format '{{(index .RepoTags 0)}} {{(index .RepoDigests 0)}}' $(IMAGE) > .digest

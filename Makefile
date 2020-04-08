@@ -24,3 +24,6 @@ images-build:
 
 images-push:
 	$(MAKE) -C images push
+
+show-digests:
+	-@cat images/*/.digest 2>/dev/null

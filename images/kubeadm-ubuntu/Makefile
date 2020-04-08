@@ -1,5 +1,8 @@
+IMAGE := errordeveloper/kubeadm:ubuntu-18.04-1.18.0
+
 build:
-	docker build -t errordeveloper/kubeadm:ubuntu-18.04-1.18.0 .
+	docker image build --tag $(IMAGE) .
 
 push: build
-	docker push errordeveloper/kubeadm:ubuntu-18.04-1.18.0
+	docker image push $(IMAGE)
+	docker image inspect --format '{{(index .RepoTags 0)}} {{(index .RepoDigests 0)}}' $(IMAGE) > .digest

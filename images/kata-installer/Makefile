@@ -1,5 +1,7 @@
+IMAGE := errordeveloper/kata-installer:latest
 build:
-	docker build -t errordeveloper/kata-installer:latest .
+	docker image build --tag $(IMAGE) .
 
 push: build
-	docker push errordeveloper/kata-installer:latest
+	docker image push $(IMAGE)
+	docker image inspect --format '{{(index .RepoTags 0)}} {{(index .RepoDigests 0)}}' $(IMAGE) > .digest

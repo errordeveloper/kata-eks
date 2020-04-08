@@ -9,13 +9,15 @@ IMAGE := errordeveloper/kata-agent:$(KATA_AGENT_VERSION)-ubuntu-18.04
 # To include dropbear with your SSH key, run:
 # `make DEBUG_SSH_PUBLIC_KEYS="$(cat ~/.ssh/id_rsa.pub)"`
 build:
-	docker build --file Dockerfile.builder --build-arg "KATA_AGENT_VERSION=$(KATA_AGENT_VERSION)" --build-arg "DEBUG_SSH_PUBLIC_KEYS=$(DEBUG_SSH_PUBLIC_KEYS)" --tag $(IMAGE)-builder .
-	container=$$(docker create --interactive --tty --volume /dev:/dev --privileged $(IMAGE)-builder) \
-	  && docker start --attach --interactive $${container} \
-	  && image_builder="$$(docker commit $${container})" \
-	  && cat Dockerfile | docker build --build-arg IMAGE_BUILDER="$${image_builder}" --tag $(IMAGE) - \
-	  && cat Dockerfile.rootfs | docker build --build-arg IMAGE_BUILDER="$${image_builder}" --tag $(IMAGE)-rootfs -
+	docker image build --file Dockerfile.builder --build-arg "KATA_AGENT_VERSION=$(KATA_AGENT_VERSION)" --build-arg "DEBUG_SSH_PUBLIC_KEYS=$(DEBUG_SSH_PUBLIC_KEYS)" --tag $(IMAGE)-builder .
+	container=$$(docker container create --interactive --tty --volume /dev:/dev --privileged $(IMAGE)-builder) \
+	  && docker container start --attach --interactive $${container} \
+	  && image_builder="$$(docker container commit $${container})" \
+	  && cat Dockerfile | docker image build --build-arg "IMAGE_BUILDER=$${image_builder}" --tag $(IMAGE) - \
+	  && cat Dockerfile.rootfs | docker image build --build-arg "IMAGE_BUILDER=$${image_builder}" --tag $(IMAGE)-rootfs - \
+	  && docker container rm --force $${container}
 
 push: build
-	docker push $(IMAGE)
-	docker push $(IMAGE)-rootfs
+	docker image push $(IMAGE)
+	docker image push $(IMAGE)-rootfs
+	docker image inspect --format '{{(index .RepoTags 0)}} {{(index .RepoDigests 0)}}' $(IMAGE) $(IMAGE)-rootfs > .digest
