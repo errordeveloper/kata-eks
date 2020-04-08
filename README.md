@@ -18,16 +18,10 @@ Before deploying Cilium, `kube-system:daemonset/aws-node` need to be deleted:
 kubectl delete --namespace=kube-system daemonset aws-node
 ```
 
-Deploy Cilium using Helm:
+Deploy Cilium:
 
 ```
-helm repo add cilium https://helm.cilium.io/
-helm install cilium cilium/cilium --version 1.7.2 \
-  --set global.eni=true \
-  --set global.egressMasqueradeInterfaces=eth0 \
-  --set global.tunnel=disabled \
-  --set global.nodeinit.enabled=true \
-  --namespace kube-system
+kubectl apply -f cilium-1.7-eks.yaml
 ```
 
 The `eksctl` config file (`cluster-management.yaml`) has a custom bootstrap script that use a self-extracting
