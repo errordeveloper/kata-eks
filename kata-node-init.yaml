@@ -27,7 +27,7 @@ items:
           image: k8s.gcr.io/pause:3.1
         initContainers:
         - name: extract-images
-          image: errordeveloper/kata-agent:c3ba09430-ubuntu-18.04@sha256:61b1aa3c9b6695beb6de852760b2b8a38682455b57e500248522fe04765abbd8
+          image: errordeveloper/kata-agent:c3ba09430-ubuntu-18.04@sha256:8d56bba61851a02c1079ee0fa1681b580a2553a18aae1db2a428af2decfe2bdc
           imagePullPolicy: Always
           securityContext:
             privileged: true
