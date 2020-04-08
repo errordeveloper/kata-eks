@@ -58,6 +58,7 @@ COPY --from=errordeveloper/kata-agent:816ee8f1f-ubuntu-18.04-rootfs /lib/modules
 COPY download.sh /tmp/download.sh
 RUN /tmp/download.sh
 
+COPY cilium-1.7-kubeadm.yaml /etc/cilium.yaml
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 

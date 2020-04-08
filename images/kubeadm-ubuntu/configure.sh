@@ -249,6 +249,7 @@ Type=oneshot
 # --cri-runtime is required also, as somehow autodetection is broken when
 # this command runs in the context of this systemd unit
 ExecStart=/usr/bin/kubeadm init --v=9 --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
+ExecStart=/usr/bin/kubectl apply --filename=/etc/cilium.yaml
 EOF
 
 systemctl enable kubeadm.service # TODO use a drop-in on nodes to override the command, or write a shell script wrapper
