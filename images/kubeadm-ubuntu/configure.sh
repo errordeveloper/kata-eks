@@ -285,3 +285,23 @@ resolvConf: /run/systemd/resolve/resolv.conf
 EOF
 
 systemctl enable kubelet
+
+cat > /etc/kubernetes/parent.conf << EOF
+apiVersion: v1
+kind: Config
+clusters:
+  - name: parent-management-cluster
+    cluster:
+      server: https://kubernetes.default.svc:443
+      certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+users:
+  - name: child-cluster
+    user:
+      tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+contexts:
+  - name: parent-management-cluster-context
+    context:
+      cluster: parent-management-cluster
+      user: child-cluster
+current-context: parent-management-cluster-context
+EOF
