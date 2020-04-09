@@ -13,7 +13,7 @@ get_tarball() {
   mkdir -p "${dir}"
 
   curl --fail --location --silent --output "${tmp}" "${url}"
-  tar -C "${dir}" -xf "${tmp}" 
+  tar -C "${dir}" -xf "${tmp}"
 
   rm -f "${tmp}"
 }
@@ -35,8 +35,8 @@ fi
 
 mkdir -p /data/etc /data/usr/bin
 
-CRICTL_VERSION="v1.16.0"
-get_tarball "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-${ALT_ARCH}.tar.gz" /data/usr/bin
+CRICTL_VERSION="1.16.0"
+get_tarball "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${CRICTL_VERSION}/crictl-v${CRICTL_VERSION}-linux-${ALT_ARCH}.tar.gz" /data/usr/bin
 
 CONTAINERD_VERSION="1.3.3"
 get_tarball "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}.linux-${ALT_ARCH}.tar.gz" /data/usr

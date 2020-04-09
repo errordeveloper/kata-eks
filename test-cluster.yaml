@@ -35,16 +35,16 @@ items:
       metadata:
         annotations:
           io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
-          # kata cannot set VM memory correctly with linuxit kernel - TODO check if CONFIG_MEMORY_HOTPLUG is set
           io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
           io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
           io.katacontainers.config.hypervisor.default_vcpus: "2"
+          # kata cannot set VM memory correctly with linuxit kernel - TODO check if CONFIG_MEMORY_HOTPLUG is set
           io.katacontainers.config.hypervisor.default_memory: "4096"
         labels:
           role: master
           cluster: test-cluster
       spec:
-        runtimeClassName: kata-qemu
+        #runtimeClassName: kata-qemu
         volumes:
           - name: images
             hostPath:
@@ -54,10 +54,26 @@ items:
             hostPath:
               path: /sys/fs/bpf
               type: Directory
+          # the following volumes are mostly required in non-kata setting, but should also work with kata
+          - name: proc
+            hostPath:
+              path: /proc
+              type: Directory
+          - hostPath:
+              # TODO: stop actually including modules in the image, these could live in kata VM, or better on the
+              # host and managed by node init ds, the kata VM and kernel lifecycles are bound anyway, so either
+              # way is the same, except that kata VM image might be better to keep small
+              path: /lib/modules
+              type: Directory
+            name: lib-modules
+          - hostPath:
+              path: /run/xtables.lock
+              type: FileOrCreate
+            name: xtables-lock
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:73130470d4147d446655b854c1335dc5fda194e949b4ae79759d5b80fc854dd5
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:eb37e05c98898787aa40d7479aa1c942bced31cc6aff33a98edea68b230e1166
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -71,10 +87,15 @@ items:
                 - systemctl
                 - --no-pager
                 - is-active
-                - kubeadm.target
-            initialDelaySeconds: 120
+                # this check must to be against the service, as targets are actually show up as active
+                # despite failing units
+                # TODO: this won't be fast enough, as kubeadm unit has to run and eventually it may fail,
+                # so we should probably test with `systemctl is-actvive kubeadm && kubectl get nodes <podName>`
+                - kubeadm.service
+            initialDelaySeconds: 30
             periodSeconds: 2
             failureThreshold: 500
+            successThreshold: 5
           env:
             - name: KUBECONFIG
               value: /etc/kubernetes/admin.conf
@@ -83,7 +104,12 @@ items:
               name: images
             - mountPath: /sys/fs/bpf
               name: bpf-maps
-              mountPropagation: Bidirectional
+              mountPropagation: Bidirectional # required due to nesting, so that cilium pod can use
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /run/xtables.lock
+              name: xtables-lock
           #resources:
           #  requests:
           #    memory: 4Gi
@@ -99,7 +125,7 @@ items:
       role: node
       cluster: test-cluster
   spec:
-    replicas: 0
+    replicas: 3
     selector:
       matchLabels:
         role: node
@@ -108,13 +134,16 @@ items:
       metadata:
         annotations:
           io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
-          #io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
+          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
           io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
+          io.katacontainers.config.hypervisor.default_vcpus: "2"
+          # kata cannot set VM memory correctly with linuxit kernel - TODO check if CONFIG_MEMORY_HOTPLUG is set
+          io.katacontainers.config.hypervisor.default_memory: "4096"
         labels:
           role: node
           cluster: test-cluster
       spec:
-        runtimeClassName: kata-qemu
+        #runtimeClassName: kata-qemu
         volumes:
           - name: images
             hostPath:
@@ -124,9 +153,22 @@ items:
             hostPath:
               path: /sys/fs/bpf
               type: Directory
+          # the following volumes are mostly required in non-kata setting, but should also work with kata
+          - hostPath:
+              # TODO: stop actually including modules in the image, these could live in kata VM, or better on the
+              # host and managed by node init ds, the kata VM and kernel lifecycles are bound anyway, so either
+              # way is the same, except that kata VM image might be better to keep small
+              # TODO: qn - does kata mount 
+              path: /lib/modules
+              type: Directory
+            name: lib-modules
+          - hostPath:
+              path: /run/xtables.lock
+              type: FileOrCreate
+            name: xtables-lock
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:eb37e05c98898787aa40d7479aa1c942bced31cc6aff33a98edea68b230e1166
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -146,4 +188,9 @@ items:
               name: images
             - mountPath: /sys/fs/bpf
               name: bpf-maps
-              mountPropagation: Bidirectional
+              mountPropagation: Bidirectional # required due to nesting, so that cilium pod can use
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /run/xtables.lock
+              name: xtables-lock

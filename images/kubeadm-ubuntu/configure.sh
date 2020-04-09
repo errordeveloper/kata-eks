@@ -186,24 +186,26 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-# TODO pick from a dir name based on \$KUBERNETES_VERSION
-# TODO pick master/node images also
 
 if ! [ -d /images ] ; then
   echo "no /images directory present, skip image preload"
   exit 0
 fi
 
-images=(\$(ls /images/*.dkr 2> /dev/null || true))
+# TODO pick master/node images also
+dirs=(
+  "/images/container/common"
+  "/images/container/common_\${KUBERNETES_VERSION}"
+  "/images/container/control_plane_\${KUBERNETES_VERSION}"
+)
+images=(\$(find "\${dirs[@]}" -name image.tar))
+
 if [ -z "\${images+x}" ] ; then
-  echo  "no /images/*.drk found, skip image preload"
+  echo  "no images found in \${dirs[@]}, skip image preload"
   exit 0
 fi
 
-for i in "\${images}" ; do
-   ctr -n k8s.io images import "\${i}"
-done
-
+echo "\${images[@]}" | xargs --max-procs=2 --max-args=1 ctr -n k8s.io images import
 EOF
 chmod +x /usr/bin/preload-images.sh
 
@@ -218,10 +220,7 @@ WantedBy=multi-user.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/versions.env
-# --cri-runtime is required, as somehow autodetection is broken when this command
-# runs in the context of this systemd unit
 ExecStart=/usr/bin/preload-images.sh
-ExecStart=/usr/bin/kubeadm config images pull --cri-socket=/var/run/containerd/containerd.sock
 EOF
 
 systemctl enable images
@@ -245,10 +244,13 @@ WantedBy=kubeadm.target
 
 [Service]
 Type=oneshot
+EnvironmentFile=/etc/versions.env
 # it looks CPU detection doesn't work very well, and with 3 cores it still barks;
-# --cri-runtime is required also, as somehow autodetection is broken when
+# --cri-socket is required also, as somehow autodetection is broken when
 # this command runs in the context of this systemd unit
-ExecStart=/usr/bin/kubeadm init --v=9 --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
+# TODO: detect if kata is in use and pass diffetent ignore-preflight-errors
+#ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
+ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU,SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables --cri-socket=/var/run/containerd/containerd.sock
 ExecStart=/usr/bin/kubectl apply --filename=/etc/cilium.yaml --kubeconfig=/etc/kubernetes/admin.conf
 EOF
 

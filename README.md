@@ -35,13 +35,13 @@ Next, deploy runtimeclasses `kata-qemu` and `kata-fc`:
 kubectl apply -f kata-runtimeclasses.yaml
 ```
 
-Before adding a nodegroup, deploy a `kube-system:daemonset/kata-node-init`, it will ensure the node has latest
-cutom VM image for use with Kata.
+Before adding a nodegroup, deploy a `kube-system:daemonset/node-init`, it will ensure the node has latest
+cutom VM image for use with Kata, and popuplate local container image cache.
 
 > *NOTE:* If you are only planning to use oficial Kata kernel and VM image, you don't need to have this daemonset.
 
 ```
-kubectl apply -f kata-node-init.yaml
+kubectl apply -f node-init.yaml
 ```
 
 Next, add a nodegroup:

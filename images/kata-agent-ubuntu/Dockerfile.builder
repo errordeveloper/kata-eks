@@ -113,10 +113,9 @@ RUN apt-get update \
 
 COPY --from=rootfs / /in
 RUN mkdir -p /out/vm /out/kernel/ubuntu-bionic /out/kernel/centos-7 /out/kernel/centos-8 /out/kernel/linuxkit
-#RUN mkdir -p /out/vm /out/kernel/{ubuntu-bionic,centos-7,centos-8,linuxkit}
 
 COPY --from=ubuntu-bionic-kernels /lib/modules /in/lib/modules
-COPY --from=ubuntu-bionic-kernels /boot /out/ubuntu-bionic
+COPY --from=ubuntu-bionic-kernels /boot /out/kernel/ubuntu-bionic
 
 COPY --from=centos-7-kernels /lib/modules /in/lib/modules
 COPY --from=centos-7-kernels /boot /out/kernel/centos-7

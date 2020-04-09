@@ -1,5 +1,4 @@
-IMAGE := errordeveloper/kubeadm:ubuntu-18.04-1.18.1
-
+IMAGE := errordeveloper/image-cache:latest
 build:
 	docker image build --tag $(IMAGE) .
 

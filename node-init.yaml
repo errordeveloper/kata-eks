@@ -4,29 +4,41 @@ items:
 - apiVersion: apps/v1
   kind: DaemonSet
   metadata:
-    name: kata-node-init
+    name: node-init
     namespace: kube-system
     labels:
-      name: kata-node-init
+      name: node-init
   spec:
     selector:
       matchLabels:
-        name: kata-node-init
+        name: node-init
     template:
       metadata:
         labels:
-          name: kata-node-init
+          name: node-init
       spec:
         volumes:
           - name: images
             hostPath:
               path: /var/lib/images
               type: Directory
+          - name: containerd
+            hostPath:
+              path: /run/containerd
+              type: Directory
         containers:
         - name: idle
           image: k8s.gcr.io/pause:3.1
         initContainers:
-        - name: extract-images
+        - name: image-cache
+          image: errordeveloper/image-cache@sha256:2f2d62ff6904c3c1da10368b3b621dd16051a232eb5bb72f2b7c5b011f74511d
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /images
+              name: images
+            - mountPath: /run/containerd
+              name: containerd
+        - name: kata-agent
           image: errordeveloper/kata-agent:c3ba09430-ubuntu-18.04@sha256:8d56bba61851a02c1079ee0fa1681b580a2553a18aae1db2a428af2decfe2bdc
           imagePullPolicy: Always
           securityContext:
