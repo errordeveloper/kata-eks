@@ -63,5 +63,8 @@ COPY cilium-1.7-kubeadm.yaml /etc/cilium.yaml
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 
+COPY master-ready.sh /usr/bin/master-ready.sh
+COPY preload-images.sh /usr/bin/preload-images.sh
+
 ENV container container-other # systemd respects this
 CMD ["/lib/systemd/systemd", "--unit=multi-user.target"]
