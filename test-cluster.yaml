@@ -73,7 +73,7 @@ items:
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:eb37e05c98898787aa40d7479aa1c942bced31cc6aff33a98edea68b230e1166
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:d3cec21f22055adc062ab43d24f3110c8a86e8577a4bddce857e87cd06231058
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -84,14 +84,7 @@ items:
           readinessProbe:
             exec:
               command:
-                - systemctl
-                - --no-pager
-                - is-active
-                # this check must to be against the service, as targets are actually show up as active
-                # despite failing units
-                # TODO: this won't be fast enough, as kubeadm unit has to run and eventually it may fail,
-                # so we should probably test with `systemctl is-actvive kubeadm && kubectl get nodes <podName>`
-                - kubeadm.service
+                - /usr/bin/is-master-ready.sh
             initialDelaySeconds: 30
             periodSeconds: 2
             failureThreshold: 500
@@ -168,7 +161,7 @@ items:
             name: xtables-lock
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:eb37e05c98898787aa40d7479aa1c942bced31cc6aff33a98edea68b230e1166
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:d3cec21f22055adc062ab43d24f3110c8a86e8577a4bddce857e87cd06231058
           imagePullPolicy: Always
           tty: true
           securityContext:
