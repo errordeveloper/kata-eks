@@ -190,7 +190,7 @@ WantedBy=multi-user.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/versions.env
-ExecStart=/usr/bin/preload-images.sh
+ExecStart=-/usr/bin/preload-images.sh
 EOF
 
 systemctl enable images
