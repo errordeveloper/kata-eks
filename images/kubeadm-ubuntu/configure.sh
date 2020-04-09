@@ -286,18 +286,22 @@ EOF
 
 systemctl enable kubelet
 
-cat > /etc/kubernetes/parent.conf << EOF
+mkdir /etc/parent-management-cluster
+cat > /etc/parent-management-cluster/kubeconfig << EOF
 apiVersion: v1
 kind: Config
 clusters:
   - name: parent-management-cluster
     cluster:
       server: https://kubernetes.default.svc:443
-      certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      # due to systemd shaddowing /var/run/secrets,
+      # we can only project the token, but we do
+      # trust our parent cluster, so no problem!
+      insecure-skip-tls-verify: true
 users:
   - name: child-cluster
     user:
-      tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tokenFile: /etc/parent-management-cluster/secrets/token
 contexts:
   - name: parent-management-cluster-context
     context:

@@ -18,6 +18,13 @@ items:
       role: master
     sessionAffinity: None
     type: ClusterIP
+
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: test-cluster-master
+  automountServiceAccountToken: false
+
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -45,6 +52,7 @@ items:
           cluster: test-cluster
       spec:
         #runtimeClassName: kata-qemu
+        serviceAccountName: test-cluster-master
         volumes:
           - name: images
             hostPath:
@@ -70,10 +78,16 @@ items:
               path: /run/xtables.lock
               type: FileOrCreate
             name: xtables-lock
+          # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
+          - name: parent-management-cluster-service-account-token
+            projected:
+              sources:
+              - serviceAccountToken:
+                  path: token
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:d3cec21f22055adc062ab43d24f3110c8a86e8577a4bddce857e87cd06231058
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:9ab5ad35661df9289cbf3bf484ae4c75ea9a707c5c1c6da0f66f9712c6de125f
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -103,6 +117,8 @@ items:
               readOnly: true
             - mountPath: /run/xtables.lock
               name: xtables-lock
+            - mountPath: /etc/parent-management-cluster/secrets
+              name: parent-management-cluster-service-account-token
           #resources:
           #  requests:
           #    memory: 4Gi
@@ -110,6 +126,13 @@ items:
           #  limits:
           #    memory: 4Gi
           #    cpu: 2.1
+
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: test-cluster-node
+  automountServiceAccountToken: false
+
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -118,7 +141,7 @@ items:
       role: node
       cluster: test-cluster
   spec:
-    replicas: 3
+    replicas: 1
     selector:
       matchLabels:
         role: node
@@ -137,6 +160,7 @@ items:
           cluster: test-cluster
       spec:
         #runtimeClassName: kata-qemu
+        serviceAccountName: test-cluster-node
         volumes:
           - name: images
             hostPath:
@@ -159,9 +183,15 @@ items:
               path: /run/xtables.lock
               type: FileOrCreate
             name: xtables-lock
+          # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
+          - name: parent-management-cluster-service-account-token
+            projected:
+              sources:
+              - serviceAccountToken:
+                  path: token
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:d3cec21f22055adc062ab43d24f3110c8a86e8577a4bddce857e87cd06231058
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:9ab5ad35661df9289cbf3bf484ae4c75ea9a707c5c1c6da0f66f9712c6de125f
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -187,3 +217,5 @@ items:
               readOnly: true
             - mountPath: /run/xtables.lock
               name: xtables-lock
+            - mountPath: /etc/parent-management-cluster/secrets
+              name: parent-management-cluster-service-account-token
