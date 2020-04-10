@@ -23,7 +23,54 @@ items:
   kind: ServiceAccount
   metadata:
     name: test-cluster-master
+    labels:
+      role: master
+      cluster: test-cluster
   automountServiceAccountToken: false
+
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: test-cluster-kubeconfig
+    labels:
+      cluster: test-cluster
+
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: test-cluster-join-token
+    labels:
+      cluster: test-cluster
+
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: test-cluster-master
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - get
+    #- watch
+    #- update
+    - patch
+    resourceNames:
+    - test-cluster-kubeconfig
+    - test-cluster-join-token
+
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: test-cluster-master
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: test-cluster-master
+  subjects:
+  - kind: ServiceAccount
+    name: test-cluster-master
 
 - apiVersion: apps/v1
   kind: Deployment
@@ -51,7 +98,7 @@ items:
           role: master
           cluster: test-cluster
       spec:
-        #runtimeClassName: kata-qemu
+        runtimeClassName: kata-qemu
         serviceAccountName: test-cluster-master
         volumes:
           - name: images
@@ -79,15 +126,23 @@ items:
               type: FileOrCreate
             name: xtables-lock
           # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
-          - name: parent-management-cluster-service-account-token
-            projected:
+          - projected:
               sources:
               - serviceAccountToken:
                   path: token
+            name: parent-management-cluster-service-account-token
+          # pass cluster name
+          - downwardAPI:
+              items:
+              - path: labels
+                fieldRef:
+                  fieldPath: metadata.labels
+            name: metadata
+
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:9ab5ad35661df9289cbf3bf484ae4c75ea9a707c5c1c6da0f66f9712c6de125f
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:60ebabdaafcb912bc8a73c3bbba156a69956f177d277dc14b78a0faeaf098004
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -119,6 +174,8 @@ items:
               name: xtables-lock
             - mountPath: /etc/parent-management-cluster/secrets
               name: parent-management-cluster-service-account-token
+            - mountPath: /etc/kubeadm/metadata
+              name: metadata
           #resources:
           #  requests:
           #    memory: 4Gi
@@ -131,6 +188,9 @@ items:
   kind: ServiceAccount
   metadata:
     name: test-cluster-node
+    labels:
+      role: node
+      cluster: test-cluster
   automountServiceAccountToken: false
 
 - apiVersion: apps/v1
@@ -159,7 +219,7 @@ items:
           role: node
           cluster: test-cluster
       spec:
-        #runtimeClassName: kata-qemu
+        runtimeClassName: kata-qemu
         serviceAccountName: test-cluster-node
         volumes:
           - name: images
@@ -184,14 +244,28 @@ items:
               type: FileOrCreate
             name: xtables-lock
           # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
-          - name: parent-management-cluster-service-account-token
-            projected:
+          - projected:
               sources:
               - serviceAccountToken:
                   path: token
+            name: parent-management-cluster-service-account-token
+          # pass cluster name
+          - downwardAPI:
+              items:
+              - path: labels
+                fieldRef:
+                  fieldPath: metadata.labels
+            name: metadata
+          # mount join token
+          - projected:
+              sources:
+              - secret:
+                  name: test-cluster-join-token
+                  optional: false
+            name: join-secret
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:9ab5ad35661df9289cbf3bf484ae4c75ea9a707c5c1c6da0f66f9712c6de125f
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:60ebabdaafcb912bc8a73c3bbba156a69956f177d277dc14b78a0faeaf098004
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -219,3 +293,7 @@ items:
               name: xtables-lock
             - mountPath: /etc/parent-management-cluster/secrets
               name: parent-management-cluster-service-account-token
+            - mountPath: /etc/kubeadm/metadata
+              name: metadata
+            - mountPath: /etc/kubeadm/secrets
+              name: join-secret

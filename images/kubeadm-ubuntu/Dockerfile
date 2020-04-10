@@ -1,4 +1,4 @@
-# based on https://github.com/weaveworks/footloose/blob/e0a534425d93b0dc45e308b319b14622f60f39da/images/ubuntu18.04/Dockerfile
+#- based on https://github.com/weaveworks/footloose/blob/e0a534425d93b0dc45e308b319b14622f60f39da/images/ubuntu18.04/Dockerfile
 FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a051853a341d
 
 # Don't start any optional services except for the few we need.
@@ -65,6 +65,7 @@ RUN /tmp/configure.sh
 
 COPY is-master-ready.sh /usr/bin/is-master-ready.sh
 COPY preload-images.sh /usr/bin/preload-images.sh
+COPY write-secrets.sh /usr/bin/write-secrets.sh
 
 ENV container container-other # systemd respects this
 CMD ["/lib/systemd/systemd", "--unit=multi-user.target"]

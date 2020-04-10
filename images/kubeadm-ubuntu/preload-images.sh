@@ -16,6 +16,7 @@ dirs=(
   "/images/container/common_${KUBERNETES_VERSION}"
   "/images/container/control_plane_${KUBERNETES_VERSION}"
 )
+
 images=($(find "${dirs[@]}" -name image.tar))
 
 if [ -z "${images+x}" ] ; then

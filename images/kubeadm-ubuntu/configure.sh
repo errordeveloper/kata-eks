@@ -221,6 +221,7 @@ EnvironmentFile=/etc/versions.env
 # TODO: detect if kata is in use and pass diffetent ignore-preflight-errors
 #ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
 ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU,SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables --cri-socket=/var/run/containerd/containerd.sock
+ExecStart=/usr/bin/write-secrets.sh  
 ExecStart=/usr/bin/kubectl apply --filename=/etc/cilium.yaml --kubeconfig=/etc/kubernetes/admin.conf
 EOF
 
