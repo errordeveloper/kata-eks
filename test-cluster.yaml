@@ -121,6 +121,9 @@ items:
               - path: labels
                 fieldRef:
                   fieldPath: metadata.labels
+              - path: namespace
+                fieldRef:
+                  fieldPath: metadata.namespace
             name: metadata
           # the following volumes are required in non-kata setting
           #- name: proc
@@ -139,7 +142,7 @@ items:
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:20237617d2c178433577effbff633f14671e58d82097ad4584e9adb7d44c2cd3
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -241,6 +244,9 @@ items:
               - path: labels
                 fieldRef:
                   fieldPath: metadata.labels
+              - path: namespace
+                fieldRef:
+                  fieldPath: metadata.namespace
             name: metadata
           # mount join token
           - projected:
@@ -264,7 +270,7 @@ items:
           #  name: xtables-lock
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:20237617d2c178433577effbff633f14671e58d82097ad4584e9adb7d44c2cd3
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55
           imagePullPolicy: Always
           tty: true
           securityContext:

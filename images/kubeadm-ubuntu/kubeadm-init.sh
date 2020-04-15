@@ -5,6 +5,14 @@ set -o pipefail
 set -o nounset
 
 cluster="$(sed -n 's/^cluster="\(.*\)"$/\1/p' "/etc/kubeadm/metadata/labels")"
+namespace="$(cat "/etc/kubeadm/metadata/namespace")"
+
+patch_secret() {
+  kubectl patch secret \
+    --kubeconfig="/etc/parent-management-cluster/kubeconfig" \
+    --namespace="${namespace}" \
+      "$@"
+}
 
 # it looks CPU detection doesn't work very well, and with 3 cores it still barks;
 # --cri-socket is required also, as somehow autodetection is broken when
@@ -29,8 +37,8 @@ ca_hash="$(openssl x509 -in /etc/kubernetes/pki/ca.crt -noout -pubkey | openssl 
 
 join_token_js="$(printf '{"stringData":{"token": "%s", "ca_hash": "%s"}}' "${join_token}" "sha256:${ca_hash%% *}")"
 
-kubectl patch secret "${cluster}-join-token" --patch="${join_token_js}" --kubeconfig=/etc/parent-management-cluster/kubeconfig
+patch_secret "${cluster}-join-token" --patch="${join_token_js}"
 
 admin_kubeconfig_js="$(printf '{"data":{"kubeconfig": "%s"}}' "$(base64 --wrap=0 < "/etc/kubernetes/admin.conf")")"
 
-kubectl patch secret "${cluster}-kubeconfig" --patch="${admin_kubeconfig_js}" --kubeconfig=/etc/parent-management-cluster/kubeconfig
+patch_secret "${cluster}-kubeconfig" --patch="${admin_kubeconfig_js}" --kubeconfig=/etc/parent-management-cluster/kubeconfig
