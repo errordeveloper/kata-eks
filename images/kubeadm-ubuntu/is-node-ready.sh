@@ -26,8 +26,8 @@ if ! [ "${ready}" = "True" ] ; then
   exit 1
 fi
 
-if systemctl --no-pager systemctl is-failed kubeadm@node.service > /dev/null ; then
-  echo "systemd kubeadm@master.service has failed"
+if systemctl --no-pager is-failed kubeadm@node.service > /dev/null ; then
+  echo "systemd kubeadm@node.service has failed"
   exit 1
 fi
 
