@@ -142,14 +142,14 @@ items:
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:60ebabdaafcb912bc8a73c3bbba156a69956f177d277dc14b78a0faeaf098004
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:4ee839e812c9f6af121462d6d8473adb930d35537e49478b452dfd19f00db029
           imagePullPolicy: Always
           tty: true
           securityContext:
             privileged: true
           command:
             - /lib/systemd/systemd
-            - --unit=kubeadm.target
+            - --unit=kubeadm@master.target
           readinessProbe:
             exec:
               command:
@@ -265,7 +265,7 @@ items:
             name: join-secret
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:60ebabdaafcb912bc8a73c3bbba156a69956f177d277dc14b78a0faeaf098004
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:4ee839e812c9f6af121462d6d8473adb930d35537e49478b452dfd19f00db029
           imagePullPolicy: Always
           tty: true
           securityContext:

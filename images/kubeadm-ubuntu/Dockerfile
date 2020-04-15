@@ -67,5 +67,8 @@ COPY is-master-ready.sh /usr/bin/is-master-ready.sh
 COPY preload-images.sh /usr/bin/preload-images.sh
 COPY write-secrets.sh /usr/bin/write-secrets.sh
 
+COPY join-cluster.sh /usr/bin/join-cluster.sh
+COPY is-node-ready.sh /usr/bin/is-node-ready.sh
+
 ENV container container-other # systemd respects this
 CMD ["/lib/systemd/systemd", "--unit=multi-user.target"]

@@ -4,10 +4,9 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-# TODO there is prbably a better way... e.g. with awk or sed
-eval "$(grep '^cluster=' "/etc/kubeadm/metadata/labels")"
+cluster="$(sed -n 's/^cluster="\(.*\)"$/\1/p' "/etc/kubeadm/metadata/labels")"
 
-export KUBECONFIG=/etc/parent-management-cluster/kubeconfig
+export KUBECONFIG="/etc/parent-management-cluster/kubeconfig"
 
 join_token="$(kubeadm token create --ttl=0 --description="Secondary token for automation")"
 ca_hash="$(sha256sum /etc/kubernetes/pki/ca.crt)"

@@ -185,7 +185,7 @@ After=containerd.service
 Requires=containerd.service
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=kubeadm@.target
 
 [Service]
 Type=oneshot
@@ -196,7 +196,7 @@ EOF
 systemctl enable images
 
 
-cat > /etc/systemd/system/kubeadm.target << EOF
+cat > /etc/systemd/system/kubeadm@.target << EOF
 [Unit]
 Requires=multi-user.target
 Conflicts=rescue.service rescue.target
@@ -204,37 +204,52 @@ After=multi-user.target basic.target rescue.service rescue.target
 AllowIsolate=yes
 EOF
 
-cat > /etc/systemd/system/kubeadm.service << EOF
+cat > /etc/systemd/system/kubeadm@.service << EOF
 [Unit]
 After=images.service
 Requires=images.service
 
 [Install]
-WantedBy=kubeadm.target
+WantedBy=kubeadm@%i.target
 
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/versions.env
+EOF
+
+systemctl enable kubeadm@.service
+
+mkdir  /etc/systemd/system/kubeadm@master.service.d
+cat > /etc/systemd/system/kubeadm@master.service.d/master.conf << EOF
+[Service]
 # it looks CPU detection doesn't work very well, and with 3 cores it still barks;
 # --cri-socket is required also, as somehow autodetection is broken when
 # this command runs in the context of this systemd unit
 # TODO: detect if kata is in use and pass diffetent ignore-preflight-errors
+# TODO: use a config file
 #ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
-ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU,SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables --cri-socket=/var/run/containerd/containerd.sock
-ExecStart=/usr/bin/write-secrets.sh  
+# on EKS without Kata SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables are required
+# on D4M Swap is Requires
+ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU,SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables,Swap --cri-socket=/var/run/containerd/containerd.sock
 ExecStart=/usr/bin/kubectl apply --filename=/etc/cilium.yaml --kubeconfig=/etc/kubernetes/admin.conf
+ExecStart=/usr/bin/write-secrets.sh
 EOF
 
-systemctl enable kubeadm.service # TODO use a drop-in on nodes to override the command, or write a shell script wrapper
+mkdir  /etc/systemd/system/kubeadm@node.service.d
+cat > /etc/systemd/system/kubeadm@node.service.d/node.conf << EOF
+[Service]
+ExecStart=/usr/bin/join-cluster.sh
+EOF
 
 cat > /etc/systemd/system/kubelet.service << EOF
 [Unit]
 Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
-Before=kubeadm.service
+Before=kubeadm@master.service
+Before=kubeadm@node.service
 
 [Install]
-WantedBy=kubeadm.target
+WantedBy=kubeadm@.target
 
 [Service]
 ExecStart=/usr/bin/kubelet \
@@ -281,8 +296,21 @@ staticPodPath: /etc/kubernetes/manifests
 streamingConnectionIdleTimeout: 0s
 syncFrequency: 0s
 volumeStatsAggPeriod: 0s
-#cgroupDriver: systemd
-resolvConf: /run/systemd/resolve/resolv.conf
+# systemd cgroupDriver doesn't work in kata,
+# probably as it's just not a proper systemds
+# setup and parent cgroup looks a little confusing,
+# also kind uses the default cgroupfs driver
+cgroupDriver: cgroupfs
+# failSwapOn is require on D4M, this could
+# be parametrised somehow, but it doesn't
+# really change anything beyod startup logic
+failSwapOn: false
+# there is an option to use /run/systemd/resolve/resolv.conf,
+# but it is probably best to just rely on what we have in pod,
+# as that's really what we do want to use, and resolved isn't
+# enable currently anyway and descisions about the config
+# would need to be made, there are many options to it...
+resolvConf: /etc/resolv.conf
 EOF
 
 systemctl enable kubelet
