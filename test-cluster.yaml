@@ -4,7 +4,7 @@ items:
 - apiVersion: v1
   kind: Service
   metadata:
-    name: test-cluster-master
+    name: test-cluster
     labels:
       cluster: test-cluster
       role: master
@@ -142,7 +142,7 @@ items:
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:4ee839e812c9f6af121462d6d8473adb930d35537e49478b452dfd19f00db029
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:24c7fd5d2170a044a79fb257a34cc9b2843458e0f654465b5af54a8ee1f77ea9
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -265,7 +265,7 @@ items:
             name: join-secret
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:4ee839e812c9f6af121462d6d8473adb930d35537e49478b452dfd19f00db029
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:24c7fd5d2170a044a79fb257a34cc9b2843458e0f654465b5af54a8ee1f77ea9
           imagePullPolicy: Always
           tty: true
           securityContext:

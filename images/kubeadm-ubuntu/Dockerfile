@@ -63,11 +63,11 @@ COPY cilium-1.7-kubeadm.yaml /etc/cilium.yaml
 COPY configure.sh /tmp/configure.sh
 RUN /tmp/configure.sh
 
-COPY is-master-ready.sh /usr/bin/is-master-ready.sh
 COPY preload-images.sh /usr/bin/preload-images.sh
-COPY write-secrets.sh /usr/bin/write-secrets.sh
+COPY kubeadm-init.sh /usr/bin/kubeadm-init.sh
+COPY is-master-ready.sh /usr/bin/is-master-ready.sh
 
-COPY join-cluster.sh /usr/bin/join-cluster.sh
+COPY kubeadm-join.sh /usr/bin/kubeadm-join.sh
 COPY is-node-ready.sh /usr/bin/is-node-ready.sh
 
 ENV container container-other # systemd respects this

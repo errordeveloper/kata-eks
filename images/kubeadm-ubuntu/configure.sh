@@ -222,23 +222,13 @@ systemctl enable kubeadm@.service
 mkdir  /etc/systemd/system/kubeadm@master.service.d
 cat > /etc/systemd/system/kubeadm@master.service.d/master.conf << EOF
 [Service]
-# it looks CPU detection doesn't work very well, and with 3 cores it still barks;
-# --cri-socket is required also, as somehow autodetection is broken when
-# this command runs in the context of this systemd unit
-# TODO: detect if kata is in use and pass diffetent ignore-preflight-errors
-# TODO: use a config file
-#ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU --cri-socket=/var/run/containerd/containerd.sock
-# on EKS without Kata SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables are required
-# on D4M Swap is Requires
-ExecStart=/usr/bin/kubeadm init --v=9 --kubernetes-version=\${KUBERNETES_VERSION} --ignore-preflight-errors=NumCPU,SystemVerification,FileContent--proc-sys-net-bridge-bridge-nf-call-iptables,Swap --cri-socket=/var/run/containerd/containerd.sock
-ExecStart=/usr/bin/kubectl apply --filename=/etc/cilium.yaml --kubeconfig=/etc/kubernetes/admin.conf
-ExecStart=/usr/bin/write-secrets.sh
+ExecStart=/usr/bin/kubeadm-init.sh
 EOF
 
 mkdir  /etc/systemd/system/kubeadm@node.service.d
 cat > /etc/systemd/system/kubeadm@node.service.d/node.conf << EOF
 [Service]
-ExecStart=/usr/bin/join-cluster.sh
+ExecStart=/usr/bin/kubeadm-join.sh
 EOF
 
 cat > /etc/systemd/system/kubelet.service << EOF
