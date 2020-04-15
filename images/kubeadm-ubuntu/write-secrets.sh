@@ -12,7 +12,7 @@ ca_hash="$(sha256sum /etc/kubernetes/pki/ca.crt)"
 # kubeadm token create actually respects KUBECONFIG, that is undesired, so we set it here
 export KUBECONFIG="/etc/parent-management-cluster/kubeconfig"
 
-join_token_js="$(printf '{"stringData":{"token": "%s", "ca_hash": "%s"}}' )" "${join_token}" "sha256:${ca_hash%% *}"
+join_token_js="$(printf '{"stringData":{"token": "%s", "ca_hash": "%s"}}' "${join_token}" "sha256:${ca_hash%% *}")"
 
 kubectl patch secret "${cluster}-join-token" --patch="${join_token_js}"
 
