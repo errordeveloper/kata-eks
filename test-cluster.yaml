@@ -109,22 +109,6 @@ items:
             hostPath:
               path: /sys/fs/bpf
               type: Directory
-          # the following volumes are mostly required in non-kata setting, but should also work with kata
-          - name: proc
-            hostPath:
-              path: /proc
-              type: Directory
-          - hostPath:
-              # TODO: stop actually including modules in the image, these could live in kata VM, or better on the
-              # host and managed by node init ds, the kata VM and kernel lifecycles are bound anyway, so either
-              # way is the same, except that kata VM image might be better to keep small
-              path: /lib/modules
-              type: Directory
-            name: lib-modules
-          - hostPath:
-              path: /run/xtables.lock
-              type: FileOrCreate
-            name: xtables-lock
           # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
           - projected:
               sources:
@@ -138,11 +122,24 @@ items:
                 fieldRef:
                   fieldPath: metadata.labels
             name: metadata
+          # the following volumes are required in non-kata setting
+          #- name: proc
+          #  hostPath:
+          #    path: /proc
+          #    type: Directory
+          #- hostPath:
+          #    path: /lib/modules
+          #    type: Directory
+          #  name: lib-modules
+          #- hostPath:
+          #    path: /run/xtables.lock
+          #    type: FileOrCreate
+          #  name: xtables-lock
 
         # TODO add initContainers to wait for /var/images to have the right files, or at least some file
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:c5ed76d679e095e333b90524d6e063e965a60add3071d5c9d3ff09a07fd7945d
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:20237617d2c178433577effbff633f14671e58d82097ad4584e9adb7d44c2cd3
           imagePullPolicy: Always
           tty: true
           securityContext:
@@ -167,15 +164,17 @@ items:
             - mountPath: /sys/fs/bpf
               name: bpf-maps
               mountPropagation: Bidirectional # required due to nesting, so that cilium pod can use
-            - mountPath: /lib/modules
-              name: lib-modules
-              readOnly: true
-            - mountPath: /run/xtables.lock
-              name: xtables-lock
             - mountPath: /etc/parent-management-cluster/secrets
               name: parent-management-cluster-service-account-token
             - mountPath: /etc/kubeadm/metadata
               name: metadata
+            #- mountPath: /proc
+            #  name: proc
+            #- mountPath: /lib/modules
+            #  name: lib-modules
+            #  readOnly: true
+            #- mountPath: /run/xtables.lock
+            #  name: xtables-lock
           #resources:
           #  requests:
           #    memory: 4Gi
@@ -201,7 +200,7 @@ items:
       role: node
       cluster: test-cluster
   spec:
-    replicas: 1
+    replicas: 10
     selector:
       matchLabels:
         role: node
@@ -230,19 +229,6 @@ items:
             hostPath:
               path: /sys/fs/bpf
               type: Directory
-          # the following volumes are mostly required in non-kata setting, but should also work with kata
-          - hostPath:
-              # TODO: stop actually including modules in the image, these could live in kata VM, or better on the
-              # host and managed by node init ds, the kata VM and kernel lifecycles are bound anyway, so either
-              # way is the same, except that kata VM image might be better to keep small
-              # TODO: qn - does kata mount 
-              path: /lib/modules
-              type: Directory
-            name: lib-modules
-          - hostPath:
-              path: /run/xtables.lock
-              type: FileOrCreate
-            name: xtables-lock
           # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
           - projected:
               sources:
@@ -263,37 +249,54 @@ items:
                   name: test-cluster-join-token
                   optional: false
             name: join-secret
+          # the following volumes are required in non-kata setting
+          #- name: proc
+          #  hostPath:
+          #    path: /proc
+          #    type: Directory
+          #- hostPath:
+          #    path: /lib/modules
+          #    type: Directory
+          #  name: lib-modules
+          #- hostPath:
+          #    path: /run/xtables.lock
+          #    type: FileOrCreate
+          #  name: xtables-lock
         containers:
         - name: console
-          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:c5ed76d679e095e333b90524d6e063e965a60add3071d5c9d3ff09a07fd7945d
+          image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:20237617d2c178433577effbff633f14671e58d82097ad4584e9adb7d44c2cd3
           imagePullPolicy: Always
           tty: true
           securityContext:
             privileged: true
+          command:
+            - /lib/systemd/systemd
+            - --unit=kubeadm@node.target
           readinessProbe:
             exec:
               command:
-                - systemctl
-                - --no-pager
-                - is-active
-                - multi-user.target
-            initialDelaySeconds: 120
+                - /usr/bin/is-node-ready.sh
+            initialDelaySeconds: 30
             periodSeconds: 2
             failureThreshold: 500
+            successThreshold: 5
+          env:
+            - name: KUBECONFIG
+              value: /etc/kubernetes/kubelet.conf
           volumeMounts:
             - mountPath: /images
               name: images
             - mountPath: /sys/fs/bpf
               name: bpf-maps
               mountPropagation: Bidirectional # required due to nesting, so that cilium pod can use
-            - mountPath: /lib/modules
-              name: lib-modules
-              readOnly: true
-            - mountPath: /run/xtables.lock
-              name: xtables-lock
-            - mountPath: /etc/parent-management-cluster/secrets
-              name: parent-management-cluster-service-account-token
             - mountPath: /etc/kubeadm/metadata
               name: metadata
             - mountPath: /etc/kubeadm/secrets
               name: join-secret
+            #- mountPath: /proc
+            #  name: proc
+            #- mountPath: /lib/modules
+            #  name: lib-modules
+            #  readOnly: true
+            #- mountPath: /run/xtables.lock
+            #  name: xtables-lock
