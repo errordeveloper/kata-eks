@@ -53,8 +53,6 @@ items:
     - secrets
     verbs:
     - get
-    #- watch
-    #- update
     - patch
     resourceNames:
     - test-cluster-kubeconfig
