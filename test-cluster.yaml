@@ -1,13 +1,13 @@
 apiVersion: v1
-kind: List
 items:
 - apiVersion: v1
   kind: Service
   metadata:
-    name: test-cluster
     labels:
       cluster: test-cluster
       role: master
+    name: test-cluster
+    namespace: default
   spec:
     ports:
     - port: 6443
@@ -18,50 +18,55 @@ items:
       role: master
     sessionAffinity: None
     type: ClusterIP
-
 - apiVersion: v1
   kind: ServiceAccount
   metadata:
-    name: test-cluster-master
     labels:
+      cluster: test-cluster
       role: master
-      cluster: test-cluster
-  automountServiceAccountToken: false
-
+    name: test-cluster-master
+    namespace: default
 - apiVersion: v1
   kind: Secret
   metadata:
+    labels:
+      cluster: test-cluster
     name: test-cluster-kubeconfig
-    labels:
-      cluster: test-cluster
-
+    namespace: default
 - apiVersion: v1
   kind: Secret
   metadata:
-    name: test-cluster-join-token
     labels:
       cluster: test-cluster
-
+    name: test-cluster-join-token
+    namespace: default
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
   metadata:
+    labels:
+      cluster: test-cluster
+      role: master
     name: test-cluster-master
+    namespace: default
   rules:
   - apiGroups:
     - ""
+    resourceNames:
+    - test-cluster-kubeconfig
+    - test-cluster-join-token
     resources:
     - secrets
     verbs:
     - get
     - patch
-    resourceNames:
-    - test-cluster-kubeconfig
-    - test-cluster-join-token
-
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
+    labels:
+      cluster: test-cluster
+      role: master
     name: test-cluster-master
+    namespace: default
   roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: Role
@@ -69,238 +74,179 @@ items:
   subjects:
   - kind: ServiceAccount
     name: test-cluster-master
-
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    name: test-cluster-master
     labels:
-      role: master
       cluster: test-cluster
+      role: master
+    name: test-cluster-master
+    namespace: default
   spec:
     replicas: 1
     selector:
       matchLabels:
-        role: master
         cluster: test-cluster
+        role: master
     template:
       metadata:
         annotations:
-          io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
-          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
-          io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
-          io.katacontainers.config.hypervisor.default_vcpus: "2"
-          # kata cannot set VM memory correctly with linuxit kernel - TODO check if CONFIG_MEMORY_HOTPLUG is set
           io.katacontainers.config.hypervisor.default_memory: "4096"
+          io.katacontainers.config.hypervisor.default_vcpus: "2"
+          io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
+          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
+          io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
         labels:
-          role: master
           cluster: test-cluster
+          role: master
       spec:
-        runtimeClassName: kata-qemu
-        serviceAccountName: test-cluster-master
-        volumes:
-          - name: images
-            hostPath:
-              path: /var/lib/images
-              type: Directory
-          - name: bpf-maps
-            hostPath:
-              path: /sys/fs/bpf
-              type: Directory
-          # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
-          - projected:
-              sources:
-              - serviceAccountToken:
-                  path: token
-            name: parent-management-cluster-service-account-token
-          # pass cluster name
-          - downwardAPI:
-              items:
-              - path: labels
-                fieldRef:
-                  fieldPath: metadata.labels
-              - path: namespace
-                fieldRef:
-                  fieldPath: metadata.namespace
-            name: metadata
-          # the following volumes are required in non-kata setting
-          #- name: proc
-          #  hostPath:
-          #    path: /proc
-          #    type: Directory
-          #- hostPath:
-          #    path: /lib/modules
-          #    type: Directory
-          #  name: lib-modules
-          #- hostPath:
-          #    path: /run/xtables.lock
-          #    type: FileOrCreate
-          #  name: xtables-lock
-
-        # TODO add initContainers to wait for /var/images to have the right files, or at least some file
+        automountServiceAccountToken: false
         containers:
-        - name: console
+        - command:
+          - /lib/systemd/systemd
+          - --unit=kubeadm@master.target
+          env:
+          - name: KUBECONFIG
+            value: /etc/kubernetes/admin.conf
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55
           imagePullPolicy: Always
-          tty: true
-          securityContext:
-            privileged: true
-          command:
-            - /lib/systemd/systemd
-            - --unit=kubeadm@master.target
+          name: main
           readinessProbe:
             exec:
               command:
-                - /usr/bin/is-master-ready.sh
+              - /usr/bin/is-master-ready.sh
+            failureThreshold: 500
             initialDelaySeconds: 30
             periodSeconds: 2
-            failureThreshold: 500
             successThreshold: 5
-          env:
-            - name: KUBECONFIG
-              value: /etc/kubernetes/admin.conf
+          securityContext:
+            privileged: true
+          tty: true
           volumeMounts:
-            - mountPath: /images
-              name: images
-            - mountPath: /sys/fs/bpf
-              name: bpf-maps
-              mountPropagation: Bidirectional # required due to nesting, so that cilium pod can use
-            - mountPath: /etc/parent-management-cluster/secrets
-              name: parent-management-cluster-service-account-token
-            - mountPath: /etc/kubeadm/metadata
-              name: metadata
-            #- mountPath: /proc
-            #  name: proc
-            #- mountPath: /lib/modules
-            #  name: lib-modules
-            #  readOnly: true
-            #- mountPath: /run/xtables.lock
-            #  name: xtables-lock
-          #resources:
-          #  requests:
-          #    memory: 4Gi
-          #    cpu: 2.1
-          #  limits:
-          #    memory: 4Gi
-          #    cpu: 2.1
-
+          - mountPath: /images
+            name: images
+          - mountPath: /sys/fs/bpf
+            mountPropagation: Bidirectional
+            name: bpf-maps
+          - mountPath: /etc/kubeadm/metadata
+            name: metadata
+          - mountPath: /etc/parent-management-cluster/secrets
+            name: parent-management-cluster-service-account-token
+        runtimeClassName: kata-qemu
+        serviceAccountName: test-cluster-master
+        volumes:
+        - hostPath:
+            path: /var/lib/images
+            type: Directory
+          name: images
+        - hostPath:
+            path: /sys/fs/bpf
+            type: Directory
+          name: bpf-maps
+        - downwardAPI:
+            items:
+            - fieldRef:
+                fieldPath: metadata.labels
+              path: labels
+            - fieldRef:
+                fieldPath: metadata.namespace
+              path: namespace
+          name: metadata
+        - name: parent-management-cluster-service-account-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: token
 - apiVersion: v1
   kind: ServiceAccount
   metadata:
-    name: test-cluster-node
     labels:
-      role: node
       cluster: test-cluster
-  automountServiceAccountToken: false
-
+      role: node
+    name: test-cluster-node
+    namespace: default
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    name: test-cluster-node
     labels:
-      role: node
       cluster: test-cluster
+      role: node
+    name: test-cluster-node
+    namespace: default
   spec:
     replicas: 10
     selector:
       matchLabels:
-        role: node
         cluster: test-cluster
+        role: node
     template:
       metadata:
         annotations:
-          io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
-          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
-          io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
-          io.katacontainers.config.hypervisor.default_vcpus: "2"
-          # kata cannot set VM memory correctly with linuxit kernel - TODO check if CONFIG_MEMORY_HOTPLUG is set
           io.katacontainers.config.hypervisor.default_memory: "4096"
+          io.katacontainers.config.hypervisor.default_vcpus: "2"
+          io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
+          io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
+          io.katacontainers.config_path: /opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml
         labels:
-          role: node
           cluster: test-cluster
+          role: node
       spec:
-        runtimeClassName: kata-qemu
-        serviceAccountName: test-cluster-node
-        volumes:
-          - name: images
-            hostPath:
-              path: /var/lib/images
-              type: Directory
-          - name: bpf-maps
-            hostPath:
-              path: /sys/fs/bpf
-              type: Directory
-          # custom service account token mount, this is needed due to systemd shaddowing /run/secrets
-          - projected:
-              sources:
-              - serviceAccountToken:
-                  path: token
-            name: parent-management-cluster-service-account-token
-          # pass cluster name
-          - downwardAPI:
-              items:
-              - path: labels
-                fieldRef:
-                  fieldPath: metadata.labels
-              - path: namespace
-                fieldRef:
-                  fieldPath: metadata.namespace
-            name: metadata
-          # mount join token
-          - projected:
-              sources:
-              - secret:
-                  name: test-cluster-join-token
-                  optional: false
-            name: join-secret
-          # the following volumes are required in non-kata setting
-          #- name: proc
-          #  hostPath:
-          #    path: /proc
-          #    type: Directory
-          #- hostPath:
-          #    path: /lib/modules
-          #    type: Directory
-          #  name: lib-modules
-          #- hostPath:
-          #    path: /run/xtables.lock
-          #    type: FileOrCreate
-          #  name: xtables-lock
+        automountServiceAccountToken: false
         containers:
-        - name: console
+        - command:
+          - /lib/systemd/systemd
+          - --unit=kubeadm@node.target
+          env:
+          - name: KUBECONFIG
+            value: /etc/kubernetes/kubelet.conf
           image: errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55
           imagePullPolicy: Always
-          tty: true
-          securityContext:
-            privileged: true
-          command:
-            - /lib/systemd/systemd
-            - --unit=kubeadm@node.target
+          name: main
           readinessProbe:
             exec:
               command:
-                - /usr/bin/is-node-ready.sh
+              - /usr/bin/is-node-ready.sh
+            failureThreshold: 500
             initialDelaySeconds: 30
             periodSeconds: 2
-            failureThreshold: 500
             successThreshold: 5
-          env:
-            - name: KUBECONFIG
-              value: /etc/kubernetes/kubelet.conf
+          securityContext:
+            privileged: true
+          tty: true
           volumeMounts:
-            - mountPath: /images
-              name: images
-            - mountPath: /sys/fs/bpf
-              name: bpf-maps
-              mountPropagation: Bidirectional # required due to nesting, so that cilium pod can use
-            - mountPath: /etc/kubeadm/metadata
-              name: metadata
-            - mountPath: /etc/kubeadm/secrets
-              name: join-secret
-            #- mountPath: /proc
-            #  name: proc
-            #- mountPath: /lib/modules
-            #  name: lib-modules
-            #  readOnly: true
-            #- mountPath: /run/xtables.lock
-            #  name: xtables-lock
+          - mountPath: /images
+            name: images
+          - mountPath: /sys/fs/bpf
+            mountPropagation: Bidirectional
+            name: bpf-maps
+          - mountPath: /etc/kubeadm/metadata
+            name: metadata
+          - mountPath: /etc/kubeadm/secrets
+            name: join-secret
+        runtimeClassName: kata-qemu
+        serviceAccountName: test-cluster-node
+        volumes:
+        - hostPath:
+            path: /var/lib/images
+            type: Directory
+          name: images
+        - hostPath:
+            path: /sys/fs/bpf
+            type: Directory
+          name: bpf-maps
+        - downwardAPI:
+            items:
+            - fieldRef:
+                fieldPath: metadata.labels
+              path: labels
+            - fieldRef:
+                fieldPath: metadata.namespace
+              path: namespace
+          name: metadata
+        - name: join-secret
+          projected:
+            sources:
+            - secret:
+                name: test-cluster-join-token
+                optional: false
+kind: List
