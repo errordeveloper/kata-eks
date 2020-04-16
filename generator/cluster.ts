@@ -14,73 +14,85 @@ enum ports {
     kubernetesAPI = 6443,
 }
 
-function makeMetadata(namespace: string, cluster: string, role?: roles, nameSuffix?: string) {
-    const labels = {
-        cluster,
-        role,
-    }
-    let name:string
-    if (role) {
-        name = `${cluster}-${role}`
-    } else {
-        name = cluster
-    }
-    if (nameSuffix) {
-        name = `${name}-${nameSuffix}`
-    }
-
-    return { name, namespace, labels }
+interface KubernetesClusterSpec {
+    name: string
+    namespace: string
+    image: string
+    nodes?: number
 }
 
-function makeAPIService(namespace: string, cluster: string) {
-    const metadata = makeMetadata(namespace, cluster, roles.master)
+class KubernetesCluster {
+    private cluster: KubernetesClusterSpec
 
-    return {
-        apiVersion: "v1",
-        kind: "Service",
-        metadata,
-        spec: {
-            ports: [
-                {
-                    port: ports.kubernetesAPI,
-                    protocol: "TCP",
-                    targetPort: ports.kubernetesAPI
-                }
-            ],
-            selector: metadata.labels,
-            sessionAffinity: "None",
-            type: "ClusterIP"
+    private items: object[]
+
+    constructor(cluster: KubernetesClusterSpec) {
+        this.cluster = cluster
+        this.items = []
+    }
+
+    private makeMetadata({ roleLabel, nameSuffix }: { roleLabel?: roles; nameSuffix?: string } = {}) {
+        const meta = {
+            namespace: this.cluster.namespace,
+            labels: {
+                cluster: this.cluster.name,
+                role: roleLabel,
+            },
+        }
+
+        if (nameSuffix) {
+            return Object.assign({}, meta, { name: `${this.cluster.name}-${nameSuffix}` })
+        } else {
+            return Object.assign({}, meta, { name: this.cluster.name })
         }
     }
-}
 
-function makeServiceAccount(namespace: string, cluster: string, role: roles) {
-    const metadata = makeMetadata(namespace, cluster, role)
+    private makeAPIService(): void {
+        const metadata = this.makeMetadata({roleLabel: roles.master})
 
-    return {
-        apiVersion: "v1",
-        kind: "ServiceAccount",
-        metadata,
-        // systemd shaddows /run/secrets, so serviceaccount secrts are mounted differently
-        automountServiceAccountToken: false,
+        this.items.push({
+            apiVersion: "v1",
+            kind: "Service",
+            metadata,
+            spec: {
+                ports: [
+                    {
+                        port: ports.kubernetesAPI,
+                        protocol: "TCP",
+                        targetPort: ports.kubernetesAPI
+                    }
+                ],
+                selector: metadata.labels,
+                sessionAffinity: "None",
+                type: "ClusterIP"
+            }
+        })
     }
-}
 
-function makeSecret(namespace: string, cluster: string, name: string) {
-    const metadata = makeMetadata(namespace, cluster, undefined, name)
+    private makeServiceAccount(role: roles): void {
+        const metadata = this.makeMetadata({roleLabel: role, nameSuffix: role})
 
-    return {
-        apiVersion: "v1",
-        kind: "Secret",
-        metadata,
+        this.items.push({
+            apiVersion: "v1",
+            kind: "ServiceAccount",
+            metadata,
+        })
     }
-}
 
-function makeMasterRoleAndBinding(namespace: string, cluster: string) {
-    const metadata = makeMetadata(namespace, cluster, roles.master)
+    private makeSecret(name: string): void {
+        const metadata = this.makeMetadata({nameSuffix: name})
 
-    return [
-        {
+        this.items.push({
+            apiVersion: "v1",
+            kind: "Secret",
+            metadata,
+        })
+    }
+
+    private makeMasterRoleAndBinding(): void {
+        const metadata = this.makeMetadata({roleLabel: roles.master, nameSuffix: roles.master})
+
+        this.items.push({
             apiVersion: "rbac.authorization.k8s.io/v1",
             kind: "Role",
             metadata,
@@ -90,8 +102,8 @@ function makeMasterRoleAndBinding(namespace: string, cluster: string) {
                         ""
                     ],
                     resourceNames: [
-                        `${cluster}-${secretNames.kubeconfig}`,
-                        `${cluster}-${secretNames.joinToken}`,
+                        `${this.cluster.name}-${secretNames.kubeconfig}`,
+                        `${this.cluster.name}-${secretNames.joinToken}`,
                     ],
                     resources: [
                         "secrets"
@@ -100,10 +112,11 @@ function makeMasterRoleAndBinding(namespace: string, cluster: string) {
                         "get",
                         "patch"
                     ],
-                },
+                }
             ]
-        },
-        {
+        })
+
+        this.items.push({
             apiVersion: "rbac.authorization.k8s.io/v1",
             kind: "RoleBinding",
             metadata,
@@ -118,287 +131,296 @@ function makeMasterRoleAndBinding(namespace: string, cluster: string) {
                     name: metadata.name,
                 }
             ]
-        },
-    ]
-}
-
-function makeDeployment(namespace: string, cluster: string, image: string, role: roles, nodes?: number) {
-    const metadata = makeMetadata(namespace, cluster, roles.master)
-    const spec = makeDeploymentSpec(metadata, image, role, nodes)
-
-    return {
-        apiVersion: "apps/v1",
-        kind: "Deployment",
-        metadata,
-        spec,
+        })
     }
-}
 
-function makeDeploymentSpec(metadata: any, image: string, role: roles, nodes?: number) {
-    let replicas: number,
-        kubeconfig: string,
-        readinessProbe: object,
-        volumes: object[],
-        volumeMounts: object[]
+    private makeDeployment(role: roles): void {
+        const metadata = this.makeMetadata({roleLabel: role, nameSuffix: role})
+        const spec = this.makeDeploymentSpec(metadata, role)
 
-    switch (role) {
-        case roles.master:
-            replicas = 1
-
-            kubeconfig = "/etc/kubernetes/admin.conf"
-
-            readinessProbe = {
-                exec: {
-                    command: [
-                        "/usr/bin/is-master-ready.sh"
-                    ]
-                },
-                failureThreshold: 500,
-                initialDelaySeconds: 30,
-                periodSeconds: 2,
-                successThreshold: 5,
-            }
-
-            volumes = [
-                {
-                    name: "images",
-                    hostPath: {
-                        type: "Directory",
-                        path: "/var/lib/images",
-                    },
-                },
-                {
-                    name: "bpf-maps",
-                    hostPath: {
-                        type: "Directory",
-                        path: "/sys/fs/bpf",
-                    },
-                },
-                {
-                    // TODO: make this part of the projected `/etc/kubeadm` volume
-                    // also generate the contets of kubeconfig from here
-                    name: "parent-management-cluster-service-account-token",
-                    projected: {
-                        sources: [
-                            {
-                                serviceAccountToken: {
-                                    path: "token"
-                                }
-                            }
-                        ]
-                    }
-                },
-                // TODO: generate kubeadm configs here?
-                // TODO: consider generating scripts and systemd units also, so image can be more static...
-                {
-                    name: "metadata",
-                    downwardAPI: {
-                        items: [
-                            {
-                                fieldRef: {
-                                    fieldPath: "metadata.labels"
-                                },
-                                path: "labels",
-                            },
-                            {
-                                fieldRef: {
-                                    fieldPath: "metadata.namespace"
-                                },
-                                path: "namespace",
-                            },
-                        ]
-                    }
-                },
-            ]
-
-            volumeMounts = [
-                {
-                    name: "images",
-                    mountPath: "/images",
-                },
-                {
-                    name: "bpf-maps",
-                    mountPath: "/sys/fs/bpf",
-                    mountPropagation: "Bidirectional",
-                },
-                {
-                    name: "parent-management-cluster-service-account-token",
-                    mountPath: "/etc/parent-management-cluster/secrets",
-                },
-                {
-                    name: "metadata",
-                    mountPath: "/etc/kubeadm/metadata",
-                },
-            ]
-
-            break;
-        case roles.node:
-            replicas = nodes||2
-
-            kubeconfig = "/etc/kubernetes/kubelet.conf"
-
-            readinessProbe = {
-                exec: {
-                    command: [
-                        "/usr/bin/is-node-ready.sh"
-                    ]
-                },
-                failureThreshold: 500,
-                initialDelaySeconds: 30,
-                periodSeconds: 2,
-                successThreshold: 5,
-            }
-
-            volumes = [
-                {
-                    name: "images",
-                    hostPath: {
-                        type: "Directory",
-                        path: "/var/lib/images",
-                    },
-                },
-                {
-                    name: "bpf-maps",
-                    hostPath: {
-                        type: "Directory",
-                        path: "/sys/fs/bpf",
-                    },
-                },
-                // TODO: generate kubeadm configs here?
-                // TODO: consider generating scrips and systemd units also, so image can be more static...
-                {
-                    name: "metadata",
-                    downwardAPI: {
-                        items: [
-                            {
-                                fieldRef: {
-                                    fieldPath: "metadata.labels"
-                                },
-                                path: "labels",
-                            },
-                            {
-                                fieldRef: {
-                                    fieldPath: "metadata.namespace"
-                                },
-                                path: "namespace",
-                            },
-                        ]
-                    }
-                },
-                // TODO: commonVolumes
-                {
-                    name: "join-secret",
-                    projected: {
-                        sources: [
-                            {
-                                secret: {
-                                    name: "test-cluster-join-token",
-                                    optional: false,
-                                }
-                            }
-                        ]
-                    }
-                }
-            ]
-
-            volumeMounts = [
-                {
-                    name: "images",
-                    mountPath: "/images",
-                },
-                {
-                    name: "bpf-maps",
-                    mountPath: "/sys/fs/bpf",
-                    mountPropagation: "Bidirectional",
-                },
-                {
-                    name: "metadata",
-                    mountPath: "/etc/kubeadm/metadata",
-                },
-                // TODO: commonVolumeMounts
-                {
-                    name: "join-secret",
-                    mountPath: "/etc/kubeadm/secrets",
-                },
-            ]
-
-            break;
+        this.items.push({
+            apiVersion: "apps/v1",
+            kind: "Deployment",
+            metadata,
+            spec,
+        })
     }
-    
-    const containers = [{
-        name: "main",
-        image,
-        imagePullPolicy: "Always",
-        command: [
-            "/lib/systemd/systemd",
-            `--unit=kubeadm@${role}.target`
-        ],
-        readinessProbe,
-        env: [
+
+    private makeDeploymentSpec(metadata: any, role: roles) {
+        let replicas: number,
+            kubeconfig: string,
+            readinessProbe: object,
+            volumes: object[],
+            volumeMounts: object[]
+
+        const commonVolumes = [
             {
-                name: "KUBECONFIG",
-                value: kubeconfig,
-            }
-        ],
-        volumeMounts,
-        securityContext: {
-            privileged: true,
-        },
-        tty: true,
-    }]
-
-    
-    return {
-        replicas,
-        selector: {
-            matchLabels: metadata.labels,
-        },
-        template: {
-            metadata: {
-                labels: metadata.labels,
-                annotations: {
-                    // TODO: these should be parametrised
-                    "io.katacontainers.config.hypervisor.default_memory": "4096",
-                    "io.katacontainers.config.hypervisor.default_vcpus": "2",
-                    "io.katacontainers.config.hypervisor.image": "/var/lib/images/vm/kata-agent-ubuntu.img",
-                    "io.katacontainers.config.hypervisor.kernel": "/var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit",
-                    "io.katacontainers.config_path": "/opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml"
-                }
+                // TODO consider adding initContainers to wait for /var/images to have the right files, or at least some file
+                name: "images",
+                hostPath: {
+                    type: "Directory",
+                    path: "/var/lib/images",
+                },
             },
-            spec: {
-                // TODO: this should be parametrised
-                runtimeClassName: "kata-qemu",
-                serviceAccountName: `${metadata.labels.cluster}-${role}`,
+            {
+                name: "bpf-maps",
+                hostPath: {
+                    type: "Directory",
+                    path: "/sys/fs/bpf",
+                },
+            },
+        ]
 
-                containers,
-                volumes,
+        // TODO: generate kubeadm configs here?
+        // TODO: consider generating scripts and systemd units also, so image can be more static...
+        const projectedVolumeBase = {
+            name: "metadata",
+            downwardAPI: {
+                items: [
+                    {
+                        fieldRef: {
+                            fieldPath: "metadata.labels"
+                        },
+                        path: "labels",
+                    },
+                    {
+                        fieldRef: {
+                            fieldPath: "metadata.namespace"
+                        },
+                        path: "namespace",
+                    },
+                ]
+            }
+        }
+
+        const commonVolumeMounts = [
+            {
+                name: "images",
+                mountPath: "/images",
+            },
+            {
+                name: "bpf-maps",
+                mountPath: "/sys/fs/bpf",
+                mountPropagation: "Bidirectional", // required due to nesting, so that cilium pod can use
+            },
+            {
+                name: "metadata",
+                mountPath: "/etc/kubeadm/metadata",
+            },
+        ]
+
+        // TODO: add top-level runtime class param or boolean virt param
+        // const nonKataVolumes = [
+        //     {
+        //         name: "proc",
+        //         hostPath: {
+        //             type: "Directory",
+        //             path: "/proc",
+        //         },
+        //     },
+        //     {
+        //         name: "lib-modules",
+        //         hostPath: {
+        //             type: "Directory",
+        //             path: "/lib/modules",
+        //         },
+        //     },
+        //     {
+        //         name: "xtables-lock",
+        //         hostPath: {
+        //             type: "FileOrCreate",
+        //             path: "/run/xtables.lock",
+        //         },
+        //     }
+        // ]
+        // const nonKataVolumeMounts = [
+        //     {
+        //         name: "proc",
+        //         mountPath: "/proc",
+        //     },
+        //     {
+        //         name: "lib-modules",
+        //         mountPath: "/lib/modules",
+        //         readOnly: true,
+        //     },
+        //     {
+        //         name: "xtables-lock",
+        //         mountPath: "/run/xtables.lock",
+        //     },
+        // ]
+
+        switch (role) {
+            case roles.master:
+                replicas = 1
+
+                kubeconfig = "/etc/kubernetes/admin.conf"
+
+                readinessProbe = {
+                    exec: {
+                        command: [
+                            "/usr/bin/is-master-ready.sh"
+                        ]
+                    },
+                    failureThreshold: 500,
+                    initialDelaySeconds: 30,
+                    periodSeconds: 2,
+                    successThreshold: 5,
+                }
+
+                volumes = [
+                    ...commonVolumes,
+                    projectedVolumeBase,
+                    {
+                        // TODO: make this part of the projected `/etc/kubeadm` volume
+                        // also generate the contets of kubeconfig from here
+                        name: "parent-management-cluster-service-account-token",
+                        projected: {
+                            sources: [
+                                {
+                                    serviceAccountToken: {
+                                        path: "token"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                ]
+
+                volumeMounts = [
+                    ...commonVolumeMounts,
+                    {
+                        name: "parent-management-cluster-service-account-token",
+                        mountPath: "/etc/parent-management-cluster/secrets",
+                    },
+                ]
+
+                break;
+            case roles.node:
+                replicas = this.cluster.nodes||2
+
+                kubeconfig = "/etc/kubernetes/kubelet.conf"
+
+                readinessProbe = {
+                    exec: {
+                        command: [
+                            "/usr/bin/is-node-ready.sh"
+                        ]
+                    },
+                    failureThreshold: 500,
+                    initialDelaySeconds: 30,
+                    periodSeconds: 2,
+                    successThreshold: 5,
+                }
+
+                volumes = [
+                    ...commonVolumes,
+                    projectedVolumeBase,
+                    {
+                        // TODO: make this part of the projected `/etc/kubeadm` volume
+                        // also generate the contets of kubeconfig from here
+                        name: "join-secret",
+                        projected: {
+                            sources: [
+                                {
+                                    secret: {
+                                        name: "test-cluster-join-token",
+                                        optional: false,
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                ]
+
+                volumeMounts = [
+                    ...commonVolumeMounts,
+                    {
+                        name: "join-secret",
+                        mountPath: "/etc/kubeadm/secrets",
+                    },
+                ]
+
+                break;
+        }
+
+        const containers = [{
+            name: "main",
+            image: this.cluster.image,
+            imagePullPolicy: "Always",
+            command: [
+                "/lib/systemd/systemd",
+                `--unit=kubeadm@${role}.target`
+            ],
+            readinessProbe,
+            env: [
+                {
+                    name: "KUBECONFIG",
+                    value: kubeconfig,
+                }
+            ],
+            volumeMounts,
+            securityContext: {
+                privileged: true,
+            },
+            tty: true,
+        }]
+
+
+        return {
+            replicas,
+            selector: {
+                matchLabels: metadata.labels,
+            },
+            template: {
+                metadata: {
+                    labels: metadata.labels,
+                    annotations: {
+                        // TODO: these should be parametrised
+                        "io.katacontainers.config.hypervisor.image": "/var/lib/images/vm/kata-agent-ubuntu.img",
+                        "io.katacontainers.config.hypervisor.kernel": "/var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit",
+                        "io.katacontainers.config_path": "/opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml",
+                        // TODO: check if CONFIG_MEMORY_HOTPLUG is set, as kata relies on that
+                        "io.katacontainers.config.hypervisor.default_memory": "4096",
+                        "io.katacontainers.config.hypervisor.default_vcpus": "2",
+                    }
+                },
+                spec: {
+                    // TODO: this should be parametrised
+                    runtimeClassName: "kata-qemu",
+                    serviceAccountName: `${metadata.labels.cluster}-${role}`,
+                    // systemd shaddows /run/secrets, so serviceaccount secrts are mounted differently
+                    automountServiceAccountToken: false,
+                    containers,
+                    volumes,
+                }
             }
         }
     }
-}
 
-const currentImage = "errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55"
+    private makeList(items: any[]) {
+        return {
+            apiVersion: "v1",
+            kind: "List",
+            items,
+        }
+    }
 
-// TODO these should be methods on a cluster object
-const objects = [
-    makeAPIService("test-1", "cluster-1"),
-    makeServiceAccount("test-1", "cluster-1", roles.master),
-    makeSecret("test-1", "cluster-1", secretNames.kubeconfig),
-    makeSecret("test-1", "cluster-1", secretNames.joinToken),
-    ...makeMasterRoleAndBinding("test-1", "cluster-1"),
-    makeDeployment("test-1", "cluster-1", currentImage, roles.master),
-    makeServiceAccount("test-1", "cluster-1", roles.node),
-    makeDeployment("test-1", "cluster-1", currentImage, roles.node, 10),
-];
+    build() {
+        this.makeAPIService()
+        this.makeServiceAccount(roles.master)
+        this.makeSecret(secretNames.kubeconfig)
+        this.makeSecret(secretNames.joinToken)
+        this.makeMasterRoleAndBinding()
+        this.makeDeployment(roles.master)
+        this.makeServiceAccount(roles.node)
+        this.makeDeployment(roles.node)
 
-function makeList(items: any[]) {
-    return {
-        apiVersion: "v1",
-        kind: "List",
-        items,
+        return this.makeList(this.items)
     }
 }
 
+const cluster = new KubernetesCluster({namespace: "default", name: "test-cluster", image: "errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55", nodes: 10})
+
 export default [
-    { value: makeList(objects), file: `cluster.yaml` },
+    { value: cluster.build(), file: `cluster.yaml` },
 ];
