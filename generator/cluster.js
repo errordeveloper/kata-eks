@@ -1,106 +1,75 @@
 // TODO: import jk's kubernetes types
-
-enum roles {
-    master = "master",
-    node = "node",
-}
-
-enum secretNames {
-    joinToken = "join-token",
-    kubeconfig = "kubeconfig",
-}
-
-enum ports {
-    kubernetesAPI = 6443,
-}
-
-enum runtimeClasses {
-    kataQemu = "kata-qemu",
-    kataFirecracker = "kata-fc",
-}
-
-enum kataConfigs {
-    qemu = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml",
-    qemuDebug = "/opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml",
-
-    default = qemuDebug,
-}
-
-enum kataImages {
-    customUbuntu = "/var/lib/images/vm/kata-agent-ubuntu.img",
-
-    default = customUbuntu,
-}
-
-enum kataKernels {
-    linuxkit_5_4_19 = "/var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit",
-    linuxkit_4_19_104 = "/var/lib/images/kernel/linuxkit/vmlinuz-4.19.104-linuxkit",
-
-    default = linuxkit_5_4_19,
-}
-
-interface KubernetesClusterSpec {
-    name: string
-    namespace: string
-    image: string
-    nodes?: number
-    runtime?: RuntimeSpec
-}
-
-interface RuntimeSpec {
-    class?: runtimeClasses
-    kata?: KataRuntimeSpec
-}
-
-interface KataRuntimeSpec {
-    config?: kataConfigs
-    image?: kataImages
-    kernel?: kataKernels
-}
-
+var roles;
+(function (roles) {
+    roles["master"] = "master";
+    roles["node"] = "node";
+})(roles || (roles = {}));
+var secretNames;
+(function (secretNames) {
+    secretNames["joinToken"] = "join-token";
+    secretNames["kubeconfig"] = "kubeconfig";
+})(secretNames || (secretNames = {}));
+var ports;
+(function (ports) {
+    ports[ports["kubernetesAPI"] = 6443] = "kubernetesAPI";
+})(ports || (ports = {}));
+var runtimeClasses;
+(function (runtimeClasses) {
+    runtimeClasses["kataQemu"] = "kata-qemu";
+    runtimeClasses["kataFirecracker"] = "kata-fc";
+})(runtimeClasses || (runtimeClasses = {}));
+var kataConfigs;
+(function (kataConfigs) {
+    kataConfigs["qemu"] = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml";
+    kataConfigs["qemuDebug"] = "/opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml";
+    kataConfigs["default"] = "/opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml";
+})(kataConfigs || (kataConfigs = {}));
+var kataImages;
+(function (kataImages) {
+    kataImages["customUbuntu"] = "/var/lib/images/vm/kata-agent-ubuntu.img";
+    kataImages["default"] = "/var/lib/images/vm/kata-agent-ubuntu.img";
+})(kataImages || (kataImages = {}));
+var kataKernels;
+(function (kataKernels) {
+    kataKernels["linuxkit_5_4_19"] = "/var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit";
+    kataKernels["linuxkit_4_19_104"] = "/var/lib/images/kernel/linuxkit/vmlinuz-4.19.104-linuxkit";
+    kataKernels["default"] = "/var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit";
+})(kataKernels || (kataKernels = {}));
 class KubernetesCluster {
-    private cluster: KubernetesClusterSpec
-
-    private items: object[]
-
-    constructor(cluster: KubernetesClusterSpec) {
-        this.cluster = cluster
-        this.items = []
+    constructor(cluster) {
+        this.cluster = cluster;
+        this.items = [];
     }
-
-    private makeMetadata({ roleLabel, nameSuffix }: { roleLabel?: roles; nameSuffix?: string } = {}) {
+    makeMetadata({ roleLabel, nameSuffix } = {}) {
         const meta = {
             namespace: this.cluster.namespace,
             labels: {
                 cluster: this.cluster.name,
                 role: roleLabel,
             },
-        }
-
+        };
         if (nameSuffix) {
-            return Object.assign({}, meta, { name: `${this.cluster.name}-${nameSuffix}` })
-        } else {
-            return Object.assign({}, meta, { name: this.cluster.name })
+            return Object.assign({}, meta, { name: `${this.cluster.name}-${nameSuffix}` });
+        }
+        else {
+            return Object.assign({}, meta, { name: this.cluster.name });
         }
     }
-
-    private makeKataAnnotations() {
-        const keyPrefix = "io.katacontainers.config"
-
+    makeKataAnnotations() {
+        var _a, _b, _c, _d, _e, _f;
+        const keyPrefix = "io.katacontainers.config";
         return {
-            [`${keyPrefix}_path`]: this.cluster.runtime?.kata?.config || kataConfigs.default,
-            [`${keyPrefix}.hypervisor.image`]: this.cluster.runtime?.kata?.image || kataImages.default,
-            [`${keyPrefix}.hypervisor.kernel`]: this.cluster.runtime?.kata?.kernel || kataKernels.default,
+            [`${keyPrefix}_path`]: ((_b = (_a = this.cluster.runtime) === null || _a === void 0 ? void 0 : _a.kata) === null || _b === void 0 ? void 0 : _b.config) || kataConfigs.default,
+            [`${keyPrefix}.hypervisor.image`]: ((_d = (_c = this.cluster.runtime) === null || _c === void 0 ? void 0 : _c.kata) === null || _d === void 0 ? void 0 : _d.image) || kataImages.default,
+            [`${keyPrefix}.hypervisor.kernel`]: ((_f = (_e = this.cluster.runtime) === null || _e === void 0 ? void 0 : _e.kata) === null || _f === void 0 ? void 0 : _f.kernel) || kataKernels.default,
             // TODO: check if CONFIG_MEMORY_HOTPLUG is set, as kata relies on that;
             // normally one should use container resource limits/request
             [`${keyPrefix}.hypervisor.default_memory`]: "4096",
             [`${keyPrefix}.hypervisor.default_vcpus`]: "2",
-        }
+        };
     }
-
-    private makeAPIService(): void {
-        const metadata = this.makeMetadata({roleLabel: roles.master})
-
+    makeAPIService() {
+        const metadata = this.makeMetadata({ roleLabel: roles.master });
         this.items.push({
             apiVersion: "v1",
             kind: "Service",
@@ -117,32 +86,26 @@ class KubernetesCluster {
                 sessionAffinity: "None",
                 type: "ClusterIP"
             }
-        })
+        });
     }
-
-    private makeServiceAccount(role: roles): void {
-        const metadata = this.makeMetadata({roleLabel: role, nameSuffix: role})
-
+    makeServiceAccount(role) {
+        const metadata = this.makeMetadata({ roleLabel: role, nameSuffix: role });
         this.items.push({
             apiVersion: "v1",
             kind: "ServiceAccount",
             metadata,
-        })
+        });
     }
-
-    private makeSecret(name: string): void {
-        const metadata = this.makeMetadata({nameSuffix: name})
-
+    makeSecret(name) {
+        const metadata = this.makeMetadata({ nameSuffix: name });
         this.items.push({
             apiVersion: "v1",
             kind: "Secret",
             metadata,
-        })
+        });
     }
-
-    private makeMasterRoleAndBinding(): void {
-        const metadata = this.makeMetadata({roleLabel: roles.master, nameSuffix: roles.master})
-
+    makeMasterRoleAndBinding() {
+        const metadata = this.makeMetadata({ roleLabel: roles.master, nameSuffix: roles.master });
         this.items.push({
             apiVersion: "rbac.authorization.k8s.io/v1",
             kind: "Role",
@@ -165,8 +128,7 @@ class KubernetesCluster {
                     ],
                 }
             ]
-        })
-
+        });
         this.items.push({
             apiVersion: "rbac.authorization.k8s.io/v1",
             kind: "RoleBinding",
@@ -182,41 +144,31 @@ class KubernetesCluster {
                     name: metadata.name,
                 }
             ]
-        })
+        });
     }
-
-    private makeDeployment(role: roles): void {
-        const metadata = this.makeMetadata({roleLabel: role, nameSuffix: role})
-        const spec = this.makeDeploymentSpec(metadata, role)
-
+    makeDeployment(role) {
+        const metadata = this.makeMetadata({ roleLabel: role, nameSuffix: role });
+        const spec = this.makeDeploymentSpec(metadata, role);
         this.items.push({
             apiVersion: "apps/v1",
             kind: "Deployment",
             metadata,
             spec,
-        })
+        });
     }
-
-    private makeDeploymentSpec(metadata: any, role: roles) {
-        let replicas: number,
-            kubeconfig: string,
-            readinessProbe: object,
-            volumes: object[],
-            volumeMounts: object[]
-
-        let annotations = {}
-
+    makeDeploymentSpec(metadata, role) {
+        var _a;
+        let replicas, kubeconfig, readinessProbe, volumes, volumeMounts;
+        let annotations = {};
         let useKata = false;
-
-        switch (this.cluster.runtime?.class) {
+        switch ((_a = this.cluster.runtime) === null || _a === void 0 ? void 0 : _a.class) {
             case runtimeClasses.kataFirecracker:
             case runtimeClasses.kataQemu:
-                useKata = true
-                annotations = this.makeKataAnnotations()
+                useKata = true;
+                annotations = this.makeKataAnnotations();
                 break;
         }
-
-        const commonVolumes:object[] = [
+        const commonVolumes = [
             {
                 // TODO consider adding initContainers to wait for /var/images to have the right files, or at least some file
                 name: "images",
@@ -232,8 +184,7 @@ class KubernetesCluster {
                     path: "/sys/fs/bpf",
                 },
             },
-        ]
-
+        ];
         // TODO: generate kubeadm configs here?
         // TODO: consider generating scripts and systemd units also, so image can be more static...
         const projectedVolumeBase = {
@@ -254,9 +205,8 @@ class KubernetesCluster {
                     },
                 ]
             }
-        }
-
-        const commonVolumeMounts:object[] = [
+        };
+        const commonVolumeMounts = [
             {
                 name: "images",
                 mountPath: "/images",
@@ -264,14 +214,13 @@ class KubernetesCluster {
             {
                 name: "bpf-maps",
                 mountPath: "/sys/fs/bpf",
-                mountPropagation: "Bidirectional", // required due to nesting, so that cilium pod can use
+                mountPropagation: "Bidirectional",
             },
             {
                 name: "metadata",
                 mountPath: "/etc/kubeadm/metadata",
             },
-        ]
-
+        ];
         if (!useKata) {
             commonVolumes.push(...[
                 {
@@ -295,8 +244,7 @@ class KubernetesCluster {
                         path: "/run/xtables.lock",
                     },
                 }
-            ])
-
+            ]);
             commonVolumeMounts.push(...[
                 {
                     name: "proc",
@@ -311,16 +259,12 @@ class KubernetesCluster {
                     name: "xtables-lock",
                     mountPath: "/run/xtables.lock",
                 },
-            ])
+            ]);
         }
-
-
         switch (role) {
             case roles.master:
-                replicas = 1
-
-                kubeconfig = "/etc/kubernetes/admin.conf"
-
+                replicas = 1;
+                kubeconfig = "/etc/kubernetes/admin.conf";
                 readinessProbe = {
                     exec: {
                         command: [
@@ -331,8 +275,7 @@ class KubernetesCluster {
                     initialDelaySeconds: 30,
                     periodSeconds: 2,
                     successThreshold: 5,
-                }
-
+                };
                 volumes = [
                     ...commonVolumes,
                     projectedVolumeBase,
@@ -350,22 +293,18 @@ class KubernetesCluster {
                             ]
                         }
                     },
-                ]
-
+                ];
                 volumeMounts = [
                     ...commonVolumeMounts,
                     {
                         name: "parent-management-cluster-service-account-token",
                         mountPath: "/etc/parent-management-cluster/secrets",
                     },
-                ]
-
+                ];
                 break;
             case roles.node:
-                replicas = this.cluster.nodes||2
-
-                kubeconfig = "/etc/kubernetes/kubelet.conf"
-
+                replicas = this.cluster.nodes || 2;
+                kubeconfig = "/etc/kubernetes/kubelet.conf";
                 readinessProbe = {
                     exec: {
                         command: [
@@ -376,8 +315,7 @@ class KubernetesCluster {
                     initialDelaySeconds: 30,
                     periodSeconds: 2,
                     successThreshold: 5,
-                }
-
+                };
                 volumes = [
                     ...commonVolumes,
                     projectedVolumeBase,
@@ -396,41 +334,37 @@ class KubernetesCluster {
                             ]
                         }
                     },
-                ]
-
+                ];
                 volumeMounts = [
                     ...commonVolumeMounts,
                     {
                         name: "join-secret",
                         mountPath: "/etc/kubeadm/secrets",
                     },
-                ]
-
+                ];
                 break;
         }
-
         const containers = [{
-            name: "main",
-            image: this.cluster.image,
-            imagePullPolicy: "Always",
-            command: [
-                "/lib/systemd/systemd",
-                `--unit=kubeadm@${role}.target`
-            ],
-            readinessProbe,
-            env: [
-                {
-                    name: "KUBECONFIG",
-                    value: kubeconfig,
-                }
-            ],
-            volumeMounts,
-            securityContext: {
-                privileged: true,
-            },
-            tty: true,
-        }]
-
+                name: "main",
+                image: this.cluster.image,
+                imagePullPolicy: "Always",
+                command: [
+                    "/lib/systemd/systemd",
+                    `--unit=kubeadm@${role}.target`
+                ],
+                readinessProbe,
+                env: [
+                    {
+                        name: "KUBECONFIG",
+                        value: kubeconfig,
+                    }
+                ],
+                volumeMounts,
+                securityContext: {
+                    privileged: true,
+                },
+                tty: true,
+            }];
         return {
             replicas,
             selector: {
@@ -451,39 +385,34 @@ class KubernetesCluster {
                     volumes,
                 }
             }
-        }
+        };
     }
-
-    private makeList(items: any[]) {
+    makeList(items) {
         return {
             apiVersion: "v1",
             kind: "List",
             items,
-        }
+        };
     }
-
     build() {
-        this.makeAPIService()
-        this.makeServiceAccount(roles.master)
-        this.makeSecret(secretNames.kubeconfig)
-        this.makeSecret(secretNames.joinToken)
-        this.makeMasterRoleAndBinding()
-        this.makeDeployment(roles.master)
-        this.makeServiceAccount(roles.node)
-        this.makeDeployment(roles.node)
-
-        return this.makeList(this.items)
+        this.makeAPIService();
+        this.makeServiceAccount(roles.master);
+        this.makeSecret(secretNames.kubeconfig);
+        this.makeSecret(secretNames.joinToken);
+        this.makeMasterRoleAndBinding();
+        this.makeDeployment(roles.master);
+        this.makeServiceAccount(roles.node);
+        this.makeDeployment(roles.node);
+        return this.makeList(this.items);
     }
 }
-
 const cluster = new KubernetesCluster({
     namespace: "default",
     name: "test-cluster",
     image: "errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55",
     nodes: 10,
-    runtime: {class: runtimeClasses.kataQemu},
-})
-
+    runtime: { class: runtimeClasses.kataQemu },
+});
 export default [
     { value: cluster.build(), file: `cluster.yaml` },
 ];

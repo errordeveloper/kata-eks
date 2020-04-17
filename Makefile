@@ -5,7 +5,7 @@ CILIUM_MANIFESTS := \
 manifest: $(CILIUM_MANIFESTS)
 all: manifest images-push
 
-.PHONY: $(CILIUM_MANIFESTS) manifest images-build image-push 
+.PHONY: $(CILIUM_MANIFESTS) manifest images-build image-push test-cluster.yaml
 
 cilium-1.7-eks.yaml:
 	helm template cilium cilium/cilium --version 1.7.2 \
@@ -27,3 +27,7 @@ images-push:
 
 show-digests:
 	-@cat images/*/.digest 2>/dev/null
+
+test-cluster.yaml:
+	cd generator && npx tsc
+	jk generate generator/cluster.js --stdout > test-cluster.yaml
