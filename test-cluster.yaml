@@ -108,7 +108,7 @@ items:
           env:
           - name: KUBECONFIG
             value: /etc/kubernetes/admin.conf
-          image: errordeveloper/kubeadm@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55
+          image: errordeveloper/kubeadm@sha256:9eb52e22d4c6a3567fffead9596071688b698edb44db82d616a43ba81bf4a67f
           imagePullPolicy: Always
           name: main
           readinessProbe:
@@ -199,7 +199,7 @@ items:
           env:
           - name: KUBECONFIG
             value: /etc/kubernetes/kubelet.conf
-          image: errordeveloper/kubeadm@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55
+          image: errordeveloper/kubeadm@sha256:9eb52e22d4c6a3567fffead9596071688b698edb44db82d616a43ba81bf4a67f
           imagePullPolicy: Always
           name: main
           readinessProbe:
