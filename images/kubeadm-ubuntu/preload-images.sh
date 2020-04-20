@@ -10,12 +10,15 @@ if ! [ -d /images ] ; then
   exit 0
 fi
 
-# TODO pick master/node images also
+role="$(sed -n 's/^role="\(.*\)"$/\1/p' "/etc/kubeadm/metadata/labels")"
+
 dirs=(
   "/images/container/common"
   "/images/container/common_${KUBERNETES_VERSION}"
-  "/images/container/control_plane_${KUBERNETES_VERSION}"
 )
+if [ "${role}" = "master" ] ; then
+  dirs+=("/images/container/control_plane_${KUBERNETES_VERSION}")
+fi
 
 images=($(find "${dirs[@]}" -name image.tar))
 
