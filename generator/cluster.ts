@@ -14,51 +14,51 @@ enum ports {
     kubernetesAPI = 6443,
 }
 
-enum runtimeClasses {
+export enum runtimeClasses {
     kataQemu = "kata-qemu",
     kataFirecracker = "kata-fc",
 }
 
-enum kataConfigs {
+export enum kataConfigs {
     qemu = "/opt/kata/share/defaults/kata-containers/configuration-qemu.toml",
     qemuDebug = "/opt/kata/share/defaults/kata-containers/configuration-qemu-debug.toml",
 
     default = qemuDebug,
 }
 
-enum kataImages {
+export enum kataImages {
     customUbuntu = "/var/lib/images/vm/kata-agent-ubuntu.img",
 
     default = customUbuntu,
 }
 
-enum kataKernels {
+export enum kataKernels {
     linuxkit_5_4_19 = "/var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit",
     linuxkit_4_19_104 = "/var/lib/images/kernel/linuxkit/vmlinuz-4.19.104-linuxkit",
 
     default = linuxkit_5_4_19,
 }
 
-interface KubernetesClusterSpec {
+export interface KubernetesClusterSpec {
     name: string
     namespace: string
     image: string
-    nodes?: number
+    nodes: number
     runtime?: RuntimeSpec
 }
 
-interface RuntimeSpec {
+export interface RuntimeSpec {
     class?: runtimeClasses
     kata?: KataRuntimeSpec
 }
 
-interface KataRuntimeSpec {
+export interface KataRuntimeSpec {
     config?: kataConfigs
     image?: kataImages
     kernel?: kataKernels
 }
 
-class KubernetesCluster {
+export class KubernetesCluster {
     private cluster: KubernetesClusterSpec
 
     private items: object[]
@@ -362,7 +362,7 @@ class KubernetesCluster {
 
                 break;
             case roles.node:
-                replicas = this.cluster.nodes||2
+                replicas = this.cluster.nodes
 
                 kubeconfig = "/etc/kubernetes/kubelet.conf"
 
@@ -389,7 +389,7 @@ class KubernetesCluster {
                             sources: [
                                 {
                                     secret: {
-                                        name: "test-cluster-join-token",
+                                        name: `${this.cluster.name}-${secretNames.joinToken}`,
                                         optional: false,
                                     }
                                 }
@@ -475,15 +475,3 @@ class KubernetesCluster {
         return this.makeList(this.items)
     }
 }
-
-const cluster = new KubernetesCluster({
-    namespace: "default",
-    name: "test-cluster",
-    image: "errordeveloper/kubeadm:ubuntu-18.04-1.18.0@sha256:7d407b9929da20df6bfa606910b893ad87b81ede15f1e7f19b4875be2f56be55",
-    nodes: 10,
-    runtime: {class: runtimeClasses.kataQemu},
-})
-
-export default [
-    { value: cluster.build(), file: `cluster.yaml` },
-];

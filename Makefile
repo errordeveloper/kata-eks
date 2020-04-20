@@ -30,4 +30,10 @@ show-digests:
 
 test-cluster.yaml:
 	cd generator && npx tsc
-	jk generate generator/cluster.js --stdout > test-cluster.yaml
+	jk generate generator/main.js --stdout \
+	  --parameter nodes=10 \
+	  --parameter name=test-cluster \
+	  --parameter image=$(shell cat images/kubeadm-ubuntu/.digest | awk '{ print $$2 }') \
+	> test-cluster.yaml
+
+
