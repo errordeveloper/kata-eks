@@ -5,7 +5,7 @@ const namespace = param.String("namespace") || "default"
 const name = param.String("name") || "test-cluster"
 const nodes = param.Number("nodes") || 2
 
-const image = param.String("image") || "errordeveloper/kubeadm:ubuntu-18.04-1.18.0
+const image = param.String("image") || "errordeveloper/kubeadm:ubuntu-18.04-1.18.1"
 
 import { KubernetesCluster, runtimeClasses } from './cluster';
 
