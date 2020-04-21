@@ -35,15 +35,6 @@ Next, deploy runtimeclasses `kata-qemu` and `kata-fc`:
 kubectl apply -f kata-runtimeclasses.yaml
 ```
 
-Before adding a nodegroup, deploy a `kube-system:daemonset/node-init`, it will ensure the node has latest
-cutom VM image for use with Kata, and popuplate local container image cache.
-
-> *NOTE:* If you are only planning to use oficial Kata kernel and VM image, you don't need to have this daemonset.
-
-```
-kubectl apply -f node-init.yaml
-```
-
 Next, add a nodegroup:
 ```
 eksctl create nodegroup --config-file=management-cluster.yaml
@@ -63,14 +54,3 @@ kubectl get pods --namespace=kube-system
 ```
 
 Now, you can try `kubectl apply -f podinfo.yaml` and just deploy a simple app with `runtimeClass: kata-qemu`.
-
-# Work-in-progress: running Kubernetes
-
-You might like to look at `images/kubeadm-ubuntu`, or just deploy the pods and take it from there:
-```
-kubectl apply -f test-cluster.yaml
-```
-
-The master pod should become 'Ready' once it ran `kubeadm init`.
-
-To test the master pod, try `./kubectl-each-master.sh get nodes`.
