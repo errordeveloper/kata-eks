@@ -84,8 +84,14 @@ export class KubernetesCluster {
         }
     }
 
-    private makeKataAnnotations() {
+    private makeKataAnnotations(role: roles) {
         const keyPrefix = "io.katacontainers.config"
+
+        // TODO: this shouldn't be done here, we should fix the hotplug issue
+        let memory = "4096"
+        if (role === roles.node) {
+            memory = "8192"
+        }
 
         return {
             [`${keyPrefix}_path`]: this.cluster.runtime?.kata?.config || kataConfigs.default,
@@ -93,7 +99,7 @@ export class KubernetesCluster {
             [`${keyPrefix}.hypervisor.kernel`]: this.cluster.runtime?.kata?.kernel || kataKernels.default,
             // TODO: check if CONFIG_MEMORY_HOTPLUG is set, as kata relies on that;
             // normally one should use container resource limits/request
-            [`${keyPrefix}.hypervisor.default_memory`]: "4096",
+            [`${keyPrefix}.hypervisor.default_memory`]: memory,
             [`${keyPrefix}.hypervisor.default_vcpus`]: "2",
         }
     }
@@ -212,7 +218,7 @@ export class KubernetesCluster {
             case runtimeClasses.kataFirecracker:
             case runtimeClasses.kataQemu:
                 useKata = true
-                annotations = this.makeKataAnnotations()
+                annotations = this.makeKataAnnotations(role)
                 break;
         }
 
