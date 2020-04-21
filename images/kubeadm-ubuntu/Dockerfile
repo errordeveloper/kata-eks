@@ -56,8 +56,10 @@ RUN mkdir -p /boot
 # TODO: modules should be actually mounted from the host
 COPY --from=errordeveloper/kata-agent:816ee8f1f-ubuntu-18.04-rootfs /lib/modules /lib/modules
 
+ARG KUBERNETES_VERSION
+
 COPY download.sh /tmp/download.sh
-RUN /tmp/download.sh
+RUN KUBERNETES_VERSION=${KUBERNETES_VERSION} /tmp/download.sh
 
 COPY cilium-1.7-kubeadm.yaml /etc/cilium.yaml
 COPY configure.sh /tmp/configure.sh

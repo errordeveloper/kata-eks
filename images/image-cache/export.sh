@@ -5,7 +5,10 @@ set -o pipefail
 set -o nounset
 
 kube_versions=(
+  "1.16.9"
+  "1.17.5"
   "1.18.1"
+  "1.18.2"
 )
 
 kube_versioned_control_plane_images=(

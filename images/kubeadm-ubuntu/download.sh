@@ -42,19 +42,23 @@ if [ "${ARCH}" = "x86_64" ] ; then
   ALT_ARCH="amd64"
 fi
 
+test -n "${KUBERNETES_VERSION}" || exit 1
+
+# TODO determine practical requirements for how versions of components need to be handled
+# and cater for that use-cases, for now one is meant to to fork this image if they really
+# need to customise it a lot
+
 CNI_VERSION="0.8.2"
 get_tarball "https://github.com/containernetworking/plugins/releases/download/v${CNI_VERSION}/cni-plugins-linux-${ALT_ARCH}-v${CNI_VERSION}.tgz" /opt/cni/bin
 
 CRICTL_VERSION="1.16.0"
 get_tarball "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${CRICTL_VERSION}/crictl-v${CRICTL_VERSION}-linux-${ALT_ARCH}.tar.gz" /usr/bin
 
-CONTAINERD_VERSION="1.3.3"
+CONTAINERD_VERSION="${CONTAINERD_VERSION:-1.3.3}"
 get_tarball "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}.linux-${ALT_ARCH}.tar.gz" /usr
 
-RUNC_VERSION="1.0.0-rc10"
+RUNC_VERSION="${RUNC_VERSION:-1.0.0-rc10}"
 get_binary "https://github.com/opencontainers/runc/releases/download/v${RUNC_VERSION}/runc.${ALT_ARCH}" runc
-
-KUBERNETES_VERSION="1.18.1"
 
 for b in kubeadm kubectl kubelet ; do
   get_binary "https://storage.googleapis.com/kubernetes-release/release/v${KUBERNETES_VERSION}/bin/linux/${ALT_ARCH}/${b}" "${b}"

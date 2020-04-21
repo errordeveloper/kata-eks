@@ -108,7 +108,7 @@ items:
           env:
           - name: KUBECONFIG
             value: /etc/kubernetes/admin.conf
-          image: errordeveloper/kubeadm@sha256:9eb52e22d4c6a3567fffead9596071688b698edb44db82d616a43ba81bf4a67f
+          image: errordeveloper/kubeadm@sha256:420aae2f672b4ab218bc81e61d18f7617e20bbcde6f4b69bf01a6b42760cebd3
           imagePullPolicy: Always
           name: main
           readinessProbe:
@@ -182,7 +182,7 @@ items:
     template:
       metadata:
         annotations:
-          io.katacontainers.config.hypervisor.default_memory: "4096"
+          io.katacontainers.config.hypervisor.default_memory: "8192"
           io.katacontainers.config.hypervisor.default_vcpus: "2"
           io.katacontainers.config.hypervisor.image: /var/lib/images/vm/kata-agent-ubuntu.img
           io.katacontainers.config.hypervisor.kernel: /var/lib/images/kernel/linuxkit/vmlinuz-5.4.19-linuxkit
@@ -199,7 +199,7 @@ items:
           env:
           - name: KUBECONFIG
             value: /etc/kubernetes/kubelet.conf
-          image: errordeveloper/kubeadm@sha256:9eb52e22d4c6a3567fffead9596071688b698edb44db82d616a43ba81bf4a67f
+          image: errordeveloper/kubeadm@sha256:420aae2f672b4ab218bc81e61d18f7617e20bbcde6f4b69bf01a6b42760cebd3
           imagePullPolicy: Always
           name: main
           readinessProbe:
