@@ -301,6 +301,32 @@ failSwapOn: false
 # enable currently anyway and descisions about the config
 # would need to be made, there are many options to it...
 resolvConf: /etc/resolv.conf
+kubeReserved:
+  cpu: "300m"
+  memory: "300Mi"
+  ephemeral-storage: "150Mi"
+systemReserved:
+  cpu: "300m"
+  memory: "300Mi"
+  ephemeral-storage: "150Mi"
+evictionSoftGracePeriod:
+  memory.available: "10m"
+  nodefs.available: "10m"
+  nodefs.inodesFree: "10m"
+  imagefs.available: "10m"
+  imagefs.inodesFree: "10m"
+evictionSoft:
+  memory.available: "150Mi"
+  nodefs.available: "15%"
+  nodefs.inodesFree: "10%"
+  imagefs.available: "15%"
+  imagefs.inodesFree: "10%"
+evictionHard:
+  memory.available: "50Mi"
+  nodefs.available: "5%"
+  nodefs.inodesFree: "3%"
+  imagefs.available: "5%"
+  imagefs.inodesFree: "3%"
 EOF
 
 systemctl enable kubelet
