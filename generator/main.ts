@@ -14,6 +14,12 @@ const cluster = new KubernetesCluster({
     runtime: {class: runtimeClasses.kataQemu},
 })
 
-export default [
+let output: { value: any, file: string }[] = [
     { value: cluster.build(), file: `cluster-${namespace}-${name}.yaml` },
 ];
+
+if (param.Boolean("sonobuoy")) {
+    output.push({ value: cluster.sonobuoy("sonobuoy/sonobuoy:v0.18.0"), file: `cluster-${namespace}-${name}-sonobuoy-job.yaml` })
+}
+
+export default output

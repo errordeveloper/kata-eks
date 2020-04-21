@@ -474,4 +474,69 @@ export class KubernetesCluster {
 
         return this.makeList(this.items)
     }
+
+    sonobuoy(image: string, args?: string[]) {
+        const name = "sonobuoy"
+        const metadata = Object.assign({},
+            this.makeMetadata({nameSuffix: name}),
+            {
+                labels: {
+                    "cluster-app": name,
+                }
+            },
+        )
+
+        const volumes = [
+            {
+                name: "kubeconfig",
+                projected: {
+                    sources: [
+                        {
+                            secret: {
+                                name: `${this.cluster.name}-${secretNames.kubeconfig}`,
+                                optional: false,
+                            }
+                        }
+                    ]
+                }
+            },
+        ]
+
+        const volumeMounts = [
+            {
+                name: "kubeconfig",
+                mountPath: "/etc/kubeadm/secrets",
+            },
+        ]
+
+        let command = [ "/sonobuoy", "run", "--kubeconfig=/etc/kubeadm/secrets/kubeconfig" ]
+        if (args) {
+            command.push(...args)
+        }
+
+        const template = {
+            // ? metadata: metadata.name, // job's pod selector is UID-based, so it only needs a name
+            spec: {
+                restartPolicy: "Never",
+                volumes,
+                containers: [
+                    {
+                        name,
+                        image,
+                        command,
+                        volumeMounts,
+                    }
+                ]
+            }
+        }
+
+        return {
+            kind: "Job",
+            apiVersion: "batch/v1",
+            metadata,
+            spec: {
+                template,
+            }
+        }
+    }
 }
